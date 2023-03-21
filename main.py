@@ -7,6 +7,7 @@ class State:
     ir_connected = False
     last_car_setup_tick = -1
     lap_counter = 0
+    previousFuelLevel = 0
 
 
 # here we check if we are connected to iracing
@@ -96,15 +97,21 @@ def loop2():
     ir.freeze_var_buffer_latest()
 
     lap = ir['Lap']
+    fuelLevel = round(ir['FuelLevel'],2)
+    fuelLastLap = state.previousFuelLevel - fuelLevel
+    airTemp = round(ir['Airtemp'],1)
+    lastLapTime = round(ir['LapLastLapTime'],2)
 
     #print(state.lap_counter)
     #print(lap)
     #print(ir['SessionFlags'])
     print(ir['DriverInfo']['Drivers'][0]['IRating'])
+    print(ir['TrackTempCrew'])
     if lap != state.lap_counter:
         state.lap_counter = lap
         print(lap)
         print(ir['LapLastLapTime'])
+
 
 
 
@@ -118,6 +125,7 @@ if __name__ == '__main__':
     ir = irsdk.IRSDK()
     state = State()
     start = time.time()
+
 
 
 
