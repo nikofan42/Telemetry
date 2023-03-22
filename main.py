@@ -1,5 +1,23 @@
 import irsdk
 import time
+import pyrebase
+from datetime import date
+
+config = {
+    "apiKey": "AIzaSyB5-lkeChuEgkJ0UXYbf6WUP33fIBNYVdA",
+    "authDomain": "iracingai.firebaseapp.com",
+    "databaseURL": "https://iracingai-default-rtdb.europe-west1.firebasedatabase.app",
+    "projectId": "iracingai",
+    "databaseURL": "https://iracingai-default-rtdb.europe-west1.firebasedatabase.app/",
+    "storageBucket": "iracingai.appspot.com",
+    "messagingSenderId": "536602400542",
+    "appId": "1:536602400542:web:17ef9c0bedfcf074209b0f",
+    "measurementId": "G-CDHEMNLTZT"
+};
+
+firebase = pyrebase.initialize_app(config)
+db = firebase.database()
+
 
 
 # this is our State class, with some helpful variables
@@ -29,6 +47,26 @@ def check_iracing():
 
 # our main loop, where we retrieve data
 # and do something useful with it
+def push(fuelLevel, fuelLastLap, airTemp, lastLapTimestr, classPos, lap, raceLap, windVel, windDir, sessionTimestr, sessionTimeRemainstr,track):
+    # data = {"Age": 21, "Name": "Benna", "Employed": True, "Vector": [1, 2, 3, 4]}
+    data = {
+        "Fuel Level": str(fuelLevel),
+        "Fuel used": str(fuelLastLap),
+        "Air temperature": str(airTemp),
+        "Laptime": lastLapTimestr,
+        "Position": str(classPos),
+        "Laps complete": str(lap),
+        "Race laps complete": str(raceLap),
+        "Wind velocity": str(windVel),
+        "Wind direction": str(windDir),
+        "Session time elapsed": str(sessionTimestr),
+        "Session time remaining": str(sessionTimeRemainstr)
+    }
+    timestamp = date.today()
+
+    print(timestamp)
+    db.child("test").child(track +" " +str(timestamp) ).child("Lap " + str(lap-1)).set(data)
+    #db.push(data)
 
 
 def loop():
@@ -45,10 +83,10 @@ def loop():
         state.in_startup = 0
         state.previousFuelLevel = ir['FuelLevel']
 
-    print(len(ir['CarIdxTrackSurface']))
+    #print(len(ir['CarIdxTrackSurface']))
     def SFget():
 
-
+        track = ir['WeekendInfo']['TrackName']
         fuelLevel = round(ir['FuelLevel'],2)
         fuelLastLap = round(state.previousFuelLevel - fuelLevel,2)
         airTemp = round(ir['AirTemp'],1)
@@ -70,6 +108,8 @@ def loop():
         sessionTimeRemainstr = str(int(sessionTimeRemain // 3600)).zfill(2) + ":"\
                          + str(int((sessionTimeRemain - sessionTimeRemain //3600 * 3600)//60)).zfill(2) + ":" \
                          + str(int(sessionTimeRemain-((sessionTimeRemain//60)*60))).zfill(2)
+
+        push(fuelLevel, fuelLastLap, airTemp, lastLapTimestr, classPos, lap, raceLap, windVel, windDir, sessionTimestr, sessionTimeRemainstr, track)
 
         print("Fuel remaining " +str(fuelLevel))
         state.previousFuelLevel = fuelLevel
