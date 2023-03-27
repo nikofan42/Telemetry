@@ -3,6 +3,7 @@ import time
 import pyrebase
 from datetime import date
 
+
 config = {
     "apiKey": "AIzaSyB5-lkeChuEgkJ0UXYbf6WUP33fIBNYVdA",
     "authDomain": "iracingai.firebaseapp.com",
@@ -28,6 +29,18 @@ class State:
     previousFuelLevel = 0
     in_startup = 1
     pit_flag = 0
+    t = time.localtime()
+    start_time = time.strftime("%H:%M:%S", t)
+    a = 0
+    sleeptime = 0.5
+    idx = 0
+    inPitBox = False
+    onPitRoad = False
+    pitting = False
+    pitLaneTime = 0
+    pitBoxTime = 0
+    pitCounter = 0
+    pitUpdated = False
 
 
 # here we check if we are connected to iracing
@@ -47,25 +60,43 @@ def check_iracing():
 
 # our main loop, where we retrieve data
 # and do something useful with it
-def push(fuelLevel, fuelLastLap, airTemp, lastLapTimestr, classPos, lap, raceLap, windVel, windDir, sessionTimestr, sessionTimeRemainstr,track):
+def push(state, fuelLevel, fuelLastLap, airTemp, lastLapTimestr, classPos, lap, raceLap, windVel, windDir, sessionTimestr, sessionTimeRemainstr,track):
     # data = {"Age": 21, "Name": "Benna", "Employed": True, "Vector": [1, 2, 3, 4]}
-    data = {
-        "Fuel Level": str(fuelLevel),
-        "Fuel used": str(fuelLastLap),
-        "Air temperature": str(airTemp),
-        "Laptime": lastLapTimestr,
-        "Position": str(classPos),
-        "Laps complete": str(lap),
-        "Race laps complete": str(raceLap),
-        "Wind velocity": str(windVel),
-        "Wind direction": str(windDir),
-        "Session time elapsed": str(sessionTimestr),
-        "Session time remaining": str(sessionTimeRemainstr)
-    }
+    if state.pitUpdated == False:
+        data = {
+            "Fuel Level": str(fuelLevel),
+            "Fuel used": str(fuelLastLap),
+            "Air temperature": str(airTemp),
+            "Laptime": lastLapTimestr,
+            "Position": str(classPos),
+            "Laps complete": str(lap).zfill(3),
+            "Race laps complete": str(raceLap),
+            "Wind velocity": str(windVel),
+            "Wind direction": str(windDir),
+            "Session time elapsed": str(sessionTimestr),
+            "Session time remaining": str(sessionTimeRemainstr)
+        }
+    else:
+        data = {
+            "Fuel Level": str(fuelLevel),
+            "Fuel used": str(fuelLastLap),
+            "Air temperature": str(airTemp),
+            "Laptime": lastLapTimestr,
+            "Position": str(classPos),
+            "Laps complete": str(lap).zfill(3),
+            "Race laps complete": str(raceLap),
+            "Wind velocity": str(windVel),
+            "Wind direction": str(windDir),
+            "Session time elapsed": str(sessionTimestr),
+            "Session time remaining": str(sessionTimeRemainstr),
+            "Pitlane time": str(round(state.pitLaneTime,2)),
+            "Pitbox time": str(round(state.pitBoxTime,2))
+        }
+        state.pitUpdated = False
     timestamp = date.today()
 
-    print(timestamp)
-    db.child("test").child(track +" " +str(timestamp) ).child("Lap " + str(lap-1)).set(data)
+
+    db.child("test").child(track +" " +str(timestamp) + " " + state.start_time).child("Lap " + str(lap-1)).set(data)
     #db.push(data)
 
 
@@ -81,6 +112,8 @@ def loop():
 
     if state.in_startup == 1:
         state.in_startup = 0
+        #print(ir['DriverInfo']['DriverCarIdx'])
+        state.idx = ir['DriverInfo']['DriverCarIdx']
         state.previousFuelLevel = ir['FuelLevel']
 
     #print(len(ir['CarIdxTrackSurface']))
@@ -109,7 +142,7 @@ def loop():
                          + str(int((sessionTimeRemain - sessionTimeRemain //3600 * 3600)//60)).zfill(2) + ":" \
                          + str(int(sessionTimeRemain-((sessionTimeRemain//60)*60))).zfill(2)
 
-        push(fuelLevel, fuelLastLap, airTemp, lastLapTimestr, classPos, lap, raceLap, windVel, windDir, sessionTimestr, sessionTimeRemainstr, track)
+        push(state, fuelLevel, fuelLastLap, airTemp, lastLapTimestr, classPos, lap, raceLap, windVel, windDir, sessionTimestr, sessionTimeRemainstr, track)
 
         print("Fuel remaining " +str(fuelLevel))
         state.previousFuelLevel = fuelLevel
@@ -123,16 +156,60 @@ def loop():
         print("Wind is " + str(windVel) + " " + str(windDir))
         print("Session time elapsed " + str(sessionTimestr))
         print("Session time remaining " + str(sessionTimeRemainstr))
-        print(type(last3LapsTimes))
+        #print(type(last3LapsTimes))
 
-
+    if ir['CarIdxTrackSurface'][state.idx] == 2 and state.pitting == False:
+        state.sleeptime = 0.1
+        state.pitting = True
+        print("pitting = true")
 
     lap = ir['Lap']
 
     if lap != state.lap_counter:
         state.lap_counter = lap
-        time.sleep(0.5)
+        time.sleep(2)
         SFget()
+
+    elif state.pitting:
+        #print(ir['CarIdxTrackSurface'][state.idx])
+        if ir['CarIdxTrackSurface'][state.idx] == 3:
+            state.sleeptime = 0.5
+            state.pitting = False
+            print("pitting = false")
+        elif state.inPitBox:
+            if ir['CarIdxTrackSurface'][state.idx] == 2:
+                state.inPitBox = False
+                state.pitCounter = state.pitCounter + 1
+                print("inpitbox = false")
+                state.pitBoxTime =  time.time() -state.pitBoxStartTime
+                print(state.pitBoxTime)
+
+        elif state.onPitRoad:
+            if ir['CarIdxTrackSurface'][state.idx] == 1:
+                state.pitBoxStartTime = time.time()
+                state.inPitBox = True
+                print("inpitbox = true")
+            elif ir['OnPitRoad'] == False:
+                state.pitLaneTime = time.time()- state.pitLaneStartTime
+                state.onPitRoad = False
+                print("onpitroad = false")
+                print(state.pitLaneTime)
+                state.pitUpdated = True
+        elif ir['OnPitRoad']:
+            state.pitLaneStartTime = time.time()
+            state.onPitRoad = True
+            print("onpitroad = true")
+
+
+
+
+
+    else:
+        #print(ir['SessionNum'])
+        pass
+        #idx = ir['DriverInfo']['DriverCarIdx']
+        #print(ir['OnPitRoad'])
+        #print(ir['CarIdxTrackSurface'][idx])
 
 
 
@@ -146,7 +223,8 @@ if __name__ == '__main__':
     # initializing ir and state
     ir = irsdk.IRSDK()
     state = State()
-    start = time.time()
+    #start = time.time()
+
 
 
 
@@ -167,7 +245,7 @@ if __name__ == '__main__':
             # sleep for 1 second
             # maximum you can use is 1/60
             # cause iracing updates data with 60 fps
-            time.sleep(0.5)
+            time.sleep(state.sleeptime)
     except KeyboardInterrupt:
         # press ctrl+c to exit
         pass
