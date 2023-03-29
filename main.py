@@ -60,7 +60,7 @@ def check_iracing():
 
 # our main loop, where we retrieve data
 # and do something useful with it
-def push(state, fuelLevel, fuelLastLap, airTemp, lastLapTimestr, classPos, lap, raceLap, windVel, windDir, sessionTimestr, sessionTimeRemainstr,track):
+def push(state, fuelLevel, fuelLastLap, airTemp, lastLapTimestr, classPos, lap, raceLap, windVel, windDir, sessionTimestr, sessionTimeRemainstr,track, PlayerCarMyIncidentCount):
     # data = {"Age": 21, "Name": "Benna", "Employed": True, "Vector": [1, 2, 3, 4]}
     if state.pitUpdated == False:
         data = {
@@ -74,7 +74,8 @@ def push(state, fuelLevel, fuelLastLap, airTemp, lastLapTimestr, classPos, lap, 
             "Wind velocity": str(windVel),
             "Wind direction": str(windDir),
             "Session time elapsed": str(sessionTimestr),
-            "Session time remaining": str(sessionTimeRemainstr)
+            "Session time remaining": str(sessionTimeRemainstr),
+            "Player car incident amount": str(PlayerCarMyIncidentCount)
         }
     else:
         data = {
@@ -89,6 +90,7 @@ def push(state, fuelLevel, fuelLastLap, airTemp, lastLapTimestr, classPos, lap, 
             "Wind direction": str(windDir),
             "Session time elapsed": str(sessionTimestr),
             "Session time remaining": str(sessionTimeRemainstr),
+            "Player car incident amount": str(PlayerCarMyIncidentCount),
             "Pitlane time": str(round(state.pitLaneTime,2)),
             "Pitbox time": str(round(state.pitBoxTime,2))
         }
@@ -142,7 +144,10 @@ def loop():
                          + str(int((sessionTimeRemain - sessionTimeRemain //3600 * 3600)//60)).zfill(2) + ":" \
                          + str(int(sessionTimeRemain-((sessionTimeRemain//60)*60))).zfill(2)
 
-        push(state, fuelLevel, fuelLastLap, airTemp, lastLapTimestr, classPos, lap, raceLap, windVel, windDir, sessionTimestr, sessionTimeRemainstr, track)
+        PlayerCarMyIncidentCount = ir['PlayerCarMyIncidentCount']
+
+
+        push(state, fuelLevel, fuelLastLap, airTemp, lastLapTimestr, classPos, lap, raceLap, windVel, windDir, sessionTimestr, sessionTimeRemainstr, track, PlayerCarMyIncidentCount)
 
         print("Fuel remaining " +str(fuelLevel))
         state.previousFuelLevel = fuelLevel
@@ -156,6 +161,7 @@ def loop():
         print("Wind is " + str(windVel) + " " + str(windDir))
         print("Session time elapsed " + str(sessionTimestr))
         print("Session time remaining " + str(sessionTimeRemainstr))
+        print("Current incident count " + str(PlayerCarMyIncidentCount))
         #print(type(last3LapsTimes))
 
     if ir['CarIdxTrackSurface'][state.idx] == 2 and state.pitting == False:
