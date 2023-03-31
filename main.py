@@ -60,7 +60,7 @@ def check_iracing():
 
 # our main loop, where we retrieve data
 # and do something useful with it
-def push(state, fuelLevel, fuelLastLap, airTemp, lastLapTimestr, classPos, lap, raceLap, windVel, windDir, sessionTimestr, sessionTimeRemainstr,track, PlayerCarMyIncidentCount, trafficValue):
+def push(state, fuelLevel, fuelLastLap, airTemp, lastLapTimestr, classPos, lap, raceLap, windVel, windDir, sessionTimestr, sessionTimeRemainstr,track, PlayerCarMyIncidentCount, trafficValue, myName):
     # data = {"Age": 21, "Name": "Benna", "Employed": True, "Vector": [1, 2, 3, 4]}
     if state.pitUpdated == False:
         data = {
@@ -76,7 +76,8 @@ def push(state, fuelLevel, fuelLastLap, airTemp, lastLapTimestr, classPos, lap, 
             "Session time elapsed": str(sessionTimestr),
             "Session time remaining": str(sessionTimeRemainstr),
             "Player car incident amount": str(PlayerCarMyIncidentCount),
-            "Current traffic value": str(trafficValue)
+            "Current traffic value": str(trafficValue),
+            "My name is": str(myName)
         }
     else:
         data = {
@@ -94,7 +95,8 @@ def push(state, fuelLevel, fuelLastLap, airTemp, lastLapTimestr, classPos, lap, 
             "Player car incident amount": str(PlayerCarMyIncidentCount),
             "Pitlane time": str(round(state.pitLaneTime,2)),
             "Pitbox time": str(round(state.pitBoxTime,2)),
-            "Current traffic value": str(trafficValue)
+            "Current traffic value": str(trafficValue),
+            "My name is": str(myName)
         }
         state.pitUpdated = False
     timestamp = date.today()
@@ -151,8 +153,17 @@ def loop():
 
         PlayerCarMyIncidentCount = ir['PlayerCarMyIncidentCount']
 
+        driversData = ir['DriverInfo']['Drivers']
+        driversNames = {}
+        for driver in driversData:
+            car_idx = driver['CardIdx']
+            name = driver['UserName']
+            driversNames[car_idx] = name
 
-        push(state, fuelLevel, fuelLastLap, airTemp, lastLapTimestr, classPos, lap, raceLap, windVel, windDir, sessionTimestr, sessionTimeRemainstr, track, PlayerCarMyIncidentCount, trafficValue)
+        myName = driversNames[state.idx]
+
+
+        push(state, fuelLevel, fuelLastLap, airTemp, lastLapTimestr, classPos, lap, raceLap, windVel, windDir, sessionTimestr, sessionTimeRemainstr, track, PlayerCarMyIncidentCount, trafficValue, myName)
 
         print("Fuel remaining " +str(fuelLevel))
         state.previousFuelLevel = fuelLevel
@@ -168,6 +179,7 @@ def loop():
         print("Session time remaining " + str(sessionTimeRemainstr))
         print("Current incident count " + str(PlayerCarMyIncidentCount))
         print("Current traffic value " + str(trafficValue))
+        print("My name is" + myName)
         #print(type(last3LapsTimes))
 
     if ir['CarIdxTrackSurface'][state.idx] == 2 and state.pitting == False:
