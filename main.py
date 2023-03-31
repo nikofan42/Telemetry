@@ -121,6 +121,7 @@ def loop():
         #print(ir['DriverInfo']['DriverCarIdx'])
         state.idx = ir['DriverInfo']['DriverCarIdx']
         state.previousFuelLevel = ir['FuelLevel']
+        print(ir['CarIdxEstTime'])
 
 
     #print(len(ir['CarIdxTrackSurface']))
@@ -149,14 +150,14 @@ def loop():
                          + str(int((sessionTimeRemain - sessionTimeRemain //3600 * 3600)//60)).zfill(2) + ":" \
                          + str(int(sessionTimeRemain-((sessionTimeRemain//60)*60))).zfill(2)
         trafficArray = ir['CarIdxEstTime']
-        trafficValue = len([x for x in trafficArray if -0.05 < x < 0.1])
-
+        trafficValue = len([x for x in trafficArray if -3 < x < 10 and x != 0])
+        print(trafficArray)
         PlayerCarMyIncidentCount = ir['PlayerCarMyIncidentCount']
 
         driversData = ir['DriverInfo']['Drivers']
         driversNames = {}
         for driver in driversData:
-            car_idx = driver['CardIdx']
+            car_idx = driver['CarIdx']
             name = driver['UserName']
             driversNames[car_idx] = name
 
@@ -191,7 +192,7 @@ def loop():
 
     if lap != state.lap_counter:
         state.lap_counter = lap
-        time.sleep(2)
+        time.sleep(20)
         SFget()
 
     elif state.pitting:
