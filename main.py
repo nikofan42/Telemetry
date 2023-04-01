@@ -60,7 +60,7 @@ def check_iracing():
 
 # our main loop, where we retrieve data
 # and do something useful with it
-def push(state, fuelLevel, fuelLastLap, airTemp, lastLapTimestr, classPos, lap, raceLap, windVel, windDir, sessionTimestr, sessionTimeRemainstr,track, PlayerCarMyIncidentCount, trafficValue, myName):
+def pushLapData(state, fuelLevel, fuelLastLap, airTemp, lastLapTimestr, classPos, lap, raceLap, windVel, windDir, sessionTimestr, sessionTimeRemainstr,track, PlayerCarMyIncidentCount, trafficValue, myName, sessionID):
     # data = {"Age": 21, "Name": "Benna", "Employed": True, "Vector": [1, 2, 3, 4]}
     if state.pitUpdated == False:
         data = {
@@ -102,7 +102,7 @@ def push(state, fuelLevel, fuelLastLap, airTemp, lastLapTimestr, classPos, lap, 
     timestamp = date.today()
 
 
-    db.child("test").child(track +" " +str(timestamp) + " " + state.start_time).child("Lap " + str(lap-1)).set(data)
+    db.child("races").child(sessionID).child(myName).set(data)
     #db.push(data)
 
 
@@ -121,10 +121,90 @@ def loop():
         #print(ir['DriverInfo']['DriverCarIdx'])
         state.idx = ir['DriverInfo']['DriverCarIdx']
         state.previousFuelLevel = ir['FuelLevel']
-        print(ir['CarIdxEstTime'])
+
+        driversData = ir['DriverInfo']['Drivers']
+        driversNames = {}
+        for driver in driversData:
+            car_idx = driver['CarIdx']
+            name = driver['UserName']
+            driversNames[car_idx] = name
+
+        myName = driversNames[state.idx]
+        sessionID = ir['SessionUniqueID']
 
 
-    #print(len(ir['CarIdxTrackSurface']))
+    def competitorDataFlow():
+        airTemp = round(ir['AirTemp'], 1)
+        trackTemp = round(ir['TrackTemp'], 1)
+
+        competitorRaceDataDictionary = {}
+        competitorAiDataDictionary = {}
+
+        # Create a dictionary to map CarIdx to UserID
+        car_idx_to_user_id = {driver['CarIdx']: driver['UserID'] for driver in ir['DriverInfo']['Drivers']}
+
+        for session in ir['SessionInfo']['Sessions']:
+            for car in session['ResultsPositions']:
+                car_idx = car['CarIdx']
+                lap = car['Lap']
+                last_time = car['LastTime']
+                user_id = car_idx_to_user_id[car_idx]  # Get the UserID for the current CarIdx
+
+                # Calculate the off-tracks for the current lap
+                #current_off_tracks = off_track_counts[car_idx]
+                #lap_off_tracks = current_off_tracks - previous_off_tracks[car_idx]
+                #previous_off_tracks[car_idx] = current_off_tracks
+
+                # Update the races dictionary using CarIdx
+                if sessionID not in competitorRaceDataDictionary:
+                    competitorRaceDataDictionary[sessionID] = {
+                        "competitorData": {}
+                    }
+
+                if car_idx not in competitorRaceDataDictionary[sessionID]["competitorData"]:
+                    competitorRaceDataDictionary[sessionID]["competitorData"][car_idx] = {
+                        "lapTimes": [],
+                        "trackTemp": [],
+                        "airTemp": [],
+                        "offTracks": []
+                    }
+
+                if lap > len(competitorRaceDataDictionary[sessionID]["competitorData"][car_idx]["lapTimes"]):
+                    competitorRaceDataDictionary[sessionID]["competitorData"][car_idx]["lapTimes"].append(last_time)
+                    competitorRaceDataDictionary[sessionID]["competitorData"][car_idx]["trackTemp"].append(trackTemp)
+                    competitorRaceDataDictionary[sessionID]["competitorData"][car_idx]["airTemp"].append(airTemp)
+                    #competitorRaceDataDictionary[sessionID]["competitorData"][car_idx]["offTracks"].append(lap_off_tracks)
+
+                    # Update the AI_analysis dictionary using UserID
+                    if user_id not in competitorAiDataDictionary:
+                        competitorAiDataDictionary[user_id] = {}
+
+                    if sessionID not in competitorAiDataDictionary[user_id]:
+                        competitorAiDataDictionary[user_id][sessionID] = {
+                            "lapTimes": [],
+                            "trackTemp": [],
+                            "airTemp": [],
+                            "offTracks": []
+                        }
+
+                    if lap > len(competitorAiDataDictionary[user_id][sessionID]["lapTimes"]):
+                        competitorAiDataDictionary[user_id][sessionID]["lapTimes"].append(last_time)
+                        competitorAiDataDictionary[user_id][sessionID]["trackTemp"].append(trackTemp)
+                        competitorAiDataDictionary[user_id][sessionID]["airTemp"].append(airTemp)
+                        #competitorAiDataDictionary[user_id][sessionID]["offTracks"].append(lap_off_tracks)
+
+                pushCompetitorRaceDataDictionary(competitorRaceDataDictionary)
+                pushCompetitorAiDataDictionary(competitorAiDataDictionary)
+
+                time.sleep(30)
+
+
+    def pushCompetitorRaceDataDictionary(competitorRaceDataDictionary):
+        db.child('races').child(sessionID).child(myName).update(competitorRaceDataDictionary)
+
+    def pushCompetitorAiDataDictionary(competitorAiDataDictionary):
+        db.child('races').child(sessionID).child(myName).update(competitorAiDataDictionary)
+
     def SFget():
 
         track = ir['WeekendInfo']['TrackName']
@@ -154,17 +234,10 @@ def loop():
         print(trafficArray)
         PlayerCarMyIncidentCount = ir['PlayerCarMyIncidentCount']
 
-        driversData = ir['DriverInfo']['Drivers']
-        driversNames = {}
-        for driver in driversData:
-            car_idx = driver['CarIdx']
-            name = driver['UserName']
-            driversNames[car_idx] = name
-
-        myName = driversNames[state.idx]
 
 
-        push(state, fuelLevel, fuelLastLap, airTemp, lastLapTimestr, classPos, lap, raceLap, windVel, windDir, sessionTimestr, sessionTimeRemainstr, track, PlayerCarMyIncidentCount, trafficValue, myName)
+
+        pushLapData(state, fuelLevel, fuelLastLap, airTemp, lastLapTimestr, classPos, lap, raceLap, windVel, windDir, sessionTimestr, sessionTimeRemainstr, track, PlayerCarMyIncidentCount, trafficValue, myName, sessionID)
 
         print("Fuel remaining " +str(fuelLevel))
         state.previousFuelLevel = fuelLevel
@@ -189,10 +262,11 @@ def loop():
         print("pitting = true")
 
     lap = ir['Lap']
+    competitorDataFlow()
 
     if lap != state.lap_counter:
         state.lap_counter = lap
-        time.sleep(20)
+        time.sleep(2)
         SFget()
 
     elif state.pitting:
