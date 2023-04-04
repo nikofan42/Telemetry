@@ -42,8 +42,6 @@ class State:
     pitCounter = 0
     pitUpdated = False
     myName = ""
-    competitorAiDataDictionary = {}
-    competitorRaceDataDictionary = {}
 
 
 
@@ -148,6 +146,7 @@ def competitorDataFlow():
     airTemp = round(ir['AirTemp'], 1)
     trackTemp = round(ir['TrackTemp'], 1)
     sessionID = ir['WeekendInfo']['SessionID']
+    trackName = ir['WeekendInfo']['TrackName']
 
     local_lap_times = {}
 
@@ -172,6 +171,39 @@ def competitorDataFlow():
         car_idx = driver['CarIdx']
         CarClass = driver['CarPath']
         driversCars[car_idx] = CarClass
+
+    # Initialize arrays to store counts of 0's (off-track) and 2's (pitted)
+    off_track_counts = [0] * len(ir['CarIdxTrackSurface'])
+    times_pitted = [0] * len(ir['CarIdxTrackSurface'])
+    prev_state = ir['CarIdxTrackSurface'].copy()
+
+    if active_session['ResultsPositions'] is not None:
+        for idx, value in enumerate(ir['CarIdxTrackSurface']):
+            # Check for off-track (0) transitions
+            if value == 0 and prev_state[idx] != 0:
+                off_track_counts[idx] += 1
+                print(f"{name} CarIdx {idx} went off-track, total off-tracks: {off_track_counts[idx]}")
+                print(f"CarIdx {idx} went off-track, total off-tracks: {off_track_counts[idx]}")
+
+
+
+            # Check for pitted (2) transitions
+            elif value == 2 and prev_state[idx] != 2:
+                times_pitted[idx] += 1
+                print(f"{name} CarIdx {idx} pitted, total times pitted: {times_pitted[idx]}")
+
+
+            # Update the previous state
+            prev_state[idx] = value
+
+            # Update CarIdxTrackSurface here if needed
+            # ...
+            time.sleep(1)
+
+
+
+
+
 
     # Find the active session (the one with the highest SessionNum)
     active_session = max(ir['SessionInfo']['Sessions'], key=lambda s: s['SessionNum'])
@@ -202,13 +234,14 @@ def competitorDataFlow():
                     races_ref = db.child(f'races/{sessionID}/competitorData/{CarNumber}/')
                     races_ref.update({
                         f'/Class': CarClass,
+                        f'/trackName': trackName,
                         f'{sessionType}/lapTimes/{lap}': last_time,
                         f'{sessionType}/trackTemp/{lap}': trackTemp,
                         #f'offTracks/{lap}': lap_off_tracks
                     })
 
                     # Update AI analysis data in Firebase Realtime Database using UserID
-                    AI_analysis_ref = db.child(f'AiDictionary/{user_id}/{CarClass}/{sessionID}/')
+                    AI_analysis_ref = db.child(f'AiDictionary/{user_id}/{CarClass}/{trackName}/{sessionID}/')
                     AI_analysis_ref.update({
                         f'{sessionType}/lapTimes/{lap}': last_time,
                         f'{sessionType}/trackTemp/{lap}': trackTemp,
