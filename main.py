@@ -1,6 +1,8 @@
 import irsdk
 import time
 import pyrebase
+import asyncio
+import aiosched
 from datetime import date
 
 
@@ -138,117 +140,11 @@ def loop():
 
 
 
-def competitorDataFlow():
-    # Create a dictionary to map CarIdx to UserID
-    car_idx_to_user_id = {driver['CarIdx']: driver['UserID'] for driver in ir['DriverInfo']['Drivers']}
-
-    print("we are in the competitordataflow now")
-    airTemp = round(ir['AirTemp'], 1)
-    trackTemp = round(ir['TrackTemp'], 1)
-    sessionID = ir['WeekendInfo']['SessionID']
-    trackName = ir['WeekendInfo']['TrackName']
-
-    local_lap_times = {}
-
-
-    driversData = ir['DriverInfo']['Drivers']
-    driversNames = {}
-    for driver in driversData:
-        car_idx = driver['CarIdx']
-        name = driver['UserName']
-        driversNames[car_idx] = name
-
-
-
-    driversNumbers = {}
-    for driver in driversData:
-        car_idx = driver['CarIdx']
-        CarNumber = driver['CarNumber']
-        driversNumbers[car_idx] = CarNumber
-
-    driversCars = {}
-    for driver in driversData:
-        car_idx = driver['CarIdx']
-        CarClass = driver['CarPath']
-        driversCars[car_idx] = CarClass
-
-    # Initialize arrays to store counts of 0's (off-track) and 2's (pitted)
-    off_track_counts = [0] * len(ir['CarIdxTrackSurface'])
-    times_pitted = [0] * len(ir['CarIdxTrackSurface'])
-    prev_state = ir['CarIdxTrackSurface'].copy()
-
-    if active_session['ResultsPositions'] is not None:
-        for idx, value in enumerate(ir['CarIdxTrackSurface']):
-            # Check for off-track (0) transitions
-            if value == 0 and prev_state[idx] != 0:
-                off_track_counts[idx] += 1
-                print(f"{name} CarIdx {idx} went off-track, total off-tracks: {off_track_counts[idx]}")
-                print(f"CarIdx {idx} went off-track, total off-tracks: {off_track_counts[idx]}")
-
-
-
-            # Check for pitted (2) transitions
-            elif value == 2 and prev_state[idx] != 2:
-                times_pitted[idx] += 1
-                print(f"{name} CarIdx {idx} pitted, total times pitted: {times_pitted[idx]}")
-
-
-            # Update the previous state
-            prev_state[idx] = value
-
-            # Update CarIdxTrackSurface here if needed
-            # ...
-            time.sleep(1)
 
 
 
 
 
-
-    # Find the active session (the one with the highest SessionNum)
-    active_session = max(ir['SessionInfo']['Sessions'], key=lambda s: s['SessionNum'])
-    sessionType = active_session['SessionName']
-    print(sessionType)
-
-    # Process the active session
-    if active_session['ResultsPositions'] is not None:
-        for car in active_session['ResultsPositions']:
-            time.sleep(1)
-            car_idx = car['CarIdx']
-            user_id = car_idx_to_user_id[car_idx]  # Get the UserID for the current CarIdx
-            lap = ir['CarIdxLap'][car_idx] - 1  # Get the lap number for the current car and increment by 1
-            last_time = car['LastTime']
-            name = driversNames[car_idx]
-            CarNumber = driversNumbers[car_idx]
-            CarClass = driversCars[car_idx]
-
-            # ... (rest of the code)
-
-            if lap != -2:  # Check if the last_time value is not -1 before updating the database
-                # Check if the lap time has already been recorded for the car's last lap using the local dictionary
-                if car_idx not in local_lap_times or lap not in local_lap_times[car_idx]:
-                    # Update the local dictionary with the new lap time
-                    local_lap_times.setdefault(car_idx, {})[lap] = last_time
-
-                    # Update competitor data in Firebase Realtime Database using CarIdx
-                    races_ref = db.child(f'races/{sessionID}/competitorData/{CarNumber}/')
-                    races_ref.update({
-                        f'/Class': CarClass,
-                        f'/trackName': trackName,
-                        f'{sessionType}/lapTimes/{lap}': last_time,
-                        f'{sessionType}/trackTemp/{lap}': trackTemp,
-                        #f'offTracks/{lap}': lap_off_tracks
-                    })
-
-                    # Update AI analysis data in Firebase Realtime Database using UserID
-                    AI_analysis_ref = db.child(f'AiDictionary/{user_id}/{CarClass}/{trackName}/{sessionID}/')
-                    AI_analysis_ref.update({
-                        f'{sessionType}/lapTimes/{lap}': last_time,
-                        f'{sessionType}/trackTemp/{lap}': trackTemp,
-                        #f'offTracks/{lap}': lap_off_tracks
-                    })
-
-                    print(str(name) + "#" + str(CarNumber) + " latest laptime for lap " + str(lap) + " is: " + str(last_time))
 
 
 
@@ -365,9 +261,112 @@ def competitorDataFlow():
         #print(ir['OnPitRoad'])
         #print(ir['CarIdxTrackSurface'][idx])
 
+def init_prev_lap_numbers():
+    global prev_lap_numbers
+    prev_lap_numbers = [0] * len(ir['CarIdxLap'])
+
+async def main():
+    init_prev_lap_numbers()
+
+    tasks = []
+
+    for idx in range(len(ir['CarIdxLap'])):
+        tasks.append(asyncio.create_task(monitor_lap_changes(idx)))
+
+    await asyncio.gather(*tasks)
+
+prev_lap_numbers = None
+async def monitor_lap_changes(idx):
+    global prev_lap_numbers
+
+    airTemp = round(ir['AirTemp'], 1)
+    trackTemp = round(ir['TrackTemp'], 1)
+    sessionID = ir['WeekendInfo']['SessionID']
+    trackName = ir['WeekendInfo']['TrackName']
+
+    local_lap_times = {}
+
+    # Create a dictionary to map CarIdx to UserID
+    car_idx_to_user_id = {driver['CarIdx']: driver['UserID'] for driver in ir['DriverInfo']['Drivers']}
+
+    print("we are in the competitordataflow now")
 
 
+    # Initialize arrays to store counts of 0's (off-track) and 2's (pitted)
+    off_track_counts = [0] * len(ir['CarIdxTrackSurface'])
+    times_pitted = [0] * len(ir['CarIdxTrackSurface'])
+    prev_state = ir['CarIdxTrackSurface'].copy()
 
+    # Find the active session (the one with the highest SessionNum)
+    active_session = max(ir['SessionInfo']['Sessions'], key=lambda s: s['SessionNum'])
+    sessionType = active_session['SessionName']
+    print(sessionType)
+
+    driversData = ir['DriverInfo']['Drivers']
+    driversNames = {}
+    for driver in driversData:
+        car_idx = driver['CarIdx']
+        name = driver['UserName']
+        driversNames[car_idx] = name
+
+    driversNumbers = {}
+    for driver in driversData:
+        car_idx = driver['CarIdx']
+        CarNumber = driver['CarNumber']
+        driversNumbers[car_idx] = CarNumber
+
+    driversCars = {}
+    for driver in driversData:
+        car_idx = driver['CarIdx']
+        CarClass = driver['CarPath']
+        driversCars[car_idx] = CarClass
+
+    while True:
+        lap_number = ir['CarIdxLap'][idx]
+        if lap_number != prev_lap_numbers[idx]:
+            prev_lap_numbers[idx] = lap_number
+            #print(f"Lap change detected for CarIdx {idx}: New lap number is {lap_number}")
+
+            if active_session['ResultsPositions'] is not None:
+                car = next((car for car in active_session['ResultsPositions'] if car['CarIdx'] == idx), None)
+                if car:
+                    car_idx = car['CarIdx']
+                    user_id = car_idx_to_user_id[car_idx]  # Get the UserID for the current CarIdx
+                    lap = ir['CarIdxLap'][car_idx] - 1  # Get the lap number for the current car and increment by 1
+                    last_time = car['LastTime']
+                    name = driversNames[car_idx]
+                    CarNumber = driversNumbers[car_idx]
+                    CarClass = driversCars[car_idx]
+
+                    # ... (rest of the code)
+
+                    if lap != -2:  # Check if the last_time value is not -1 before updating the database
+                        # Check if the lap time has already been recorded for the car's last lap using the local dictionary
+                        if car_idx not in local_lap_times or lap not in local_lap_times[car_idx]:
+                            # Update the local dictionary with the new lap time
+                            local_lap_times.setdefault(car_idx, {})[lap] = last_time
+
+                            # Update competitor data in Firebase Realtime Database using CarIdx
+                            races_ref = db.child(f'races/{sessionID}/{state.myName}/competitorData/{CarNumber}/')
+                            races_ref.update({
+                                f'/Class': CarClass,
+                                f'/trackName': trackName,
+                                f'{sessionType}/lapTimes/{lap}': last_time,
+                                f'{sessionType}/trackTemp/{lap}': trackTemp,
+                                # f'offTracks/{lap}': lap_off_tracks
+                            })
+
+                            # Update AI analysis data in Firebase Realtime Database using UserID
+                            AI_analysis_ref = db.child(f'AiDictionary/{user_id}/{CarClass}/{trackName}/{sessionID}/')
+                            AI_analysis_ref.update({
+                                f'{sessionType}/lapTimes/{lap}': last_time,
+                                f'{sessionType}/trackTemp/{lap}': trackTemp,
+                                # f'offTracks/{lap}': lap_off_tracks
+                            })
+
+                            print(str(name) + "#" + str(CarNumber) + " latest laptime for lap " + str(lap) + " is: " + str(last_time))
+
+        await asyncio.sleep(state.sleeptime)
 
 
 if __name__ == '__main__':
@@ -396,7 +395,7 @@ if __name__ == '__main__':
             # if we are, then process data
             if state.ir_connected:
                 loop()
-                competitorDataFlow()
+                asyncio.run(main())
             # sleep for 1 second
             # maximum you can use is 1/60
             # cause iracing updates data with 60 fps
