@@ -107,7 +107,7 @@ def pushLapData(state, fuelLevel, fuelLastLap, airTemp, lastLapTimestr, classPos
     timestamp = date.today()
 
 
-    db.child("races").child(sessionID).child(myName).set(data)
+    db.child("races").child(sessionID).child(state.myName).set(data)
     #db.push(data)
 
 
@@ -188,7 +188,7 @@ def loop():
 
 
 
-        pushLapData(state, fuelLevel, fuelLastLap, airTemp, lastLapTimestr, classPos, lap, raceLap, windVel, windDir, sessionTimestr, sessionTimeRemainstr, track, PlayerCarMyIncidentCount, trafficValue, myName, sessionID)
+        pushLapData(state, fuelLevel, fuelLastLap, airTemp, lastLapTimestr, classPos, lap, raceLap, windVel, windDir, sessionTimestr, sessionTimeRemainstr, track, PlayerCarMyIncidentCount, trafficValue, sessionID)
 
         print("Fuel remaining " +str(fuelLevel))
         state.previousFuelLevel = fuelLevel
@@ -333,7 +333,7 @@ async def monitor_lap_changes(idx):
                     car_idx = car['CarIdx']
                     user_id = car_idx_to_user_id[car_idx]  # Get the UserID for the current CarIdx
                     lap = ir['CarIdxLap'][car_idx] - 1  # Get the lap number for the current car and increment by 1
-                    last_time = car['LastTime']
+
                     name = driversNames[car_idx]
                     CarNumber = driversNumbers[car_idx]
                     CarClass = driversCars[car_idx]
@@ -344,6 +344,13 @@ async def monitor_lap_changes(idx):
                         # Check if the lap time has already been recorded for the car's last lap using the local dictionary
                         if car_idx not in local_lap_times or lap not in local_lap_times[car_idx]:
                             # Update the local dictionary with the new lap time
+                            await asyncio.sleep(10)
+                            # This needs to be refetched as it has not been updated fully when we trigger it for the first time.
+                            active_session = ir['SessionInfo']['Sessions'][ir['SessionNum']]
+                            car = next((car for car in active_session['ResultsPositions'] if car['CarIdx'] == idx),
+                                       None)
+
+                            last_time = car['LastTime']
                             local_lap_times.setdefault(car_idx, {})[lap] = last_time
 
                             # Update competitor data in Firebase Realtime Database using CarIdx
@@ -352,6 +359,7 @@ async def monitor_lap_changes(idx):
                                 f'/Class': CarClass,
                                 f'/trackName': trackName,
                                 f'{sessionType}/lapTimes/{lap}': last_time,
+
                                 f'{sessionType}/trackTemp/{lap}': trackTemp,
                                 # f'offTracks/{lap}': lap_off_tracks
                             })
