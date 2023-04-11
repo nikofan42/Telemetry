@@ -4,6 +4,8 @@ import pyrebase
 import asyncio
 import aiosched
 from datetime import date
+from telemetry_generator import telemetry_generator
+import unittest
 
 
 config = {
@@ -44,7 +46,6 @@ class State:
     pitCounter = 0
     pitUpdated = False
     myName = ""
-
 
 
 
@@ -111,7 +112,7 @@ def pushLapData(state, fuelLevel, fuelLastLap, airTemp, lastLapTimestr, classPos
     #db.push(data)
 
 
-def loop():
+def loop(ir):
     # on each tick we freeze buffer with live telemetry
     # it is optional, but useful if you use vars like CarIdxXXX
     # this way you will have consistent data from those vars inside one tick
@@ -139,7 +140,7 @@ def loop():
 
 
 
-    def SFget():
+    def SFget(ir):
 
         track = ir['WeekendInfo']['TrackName']
         fuelLevel = round(ir['FuelLevel'],2)
@@ -244,15 +245,16 @@ def loop():
         #print(ir['OnPitRoad'])
         #print(ir['CarIdxTrackSurface'][idx])
 
-def init_prev_lap_numbers():
+def init_prev_lap_numbers(ir):
     global prev_lap_numbers
     prev_lap_numbers = [0] * 64
 
-def init_prev_track_state():
+def init_prev_track_state(ir):
     global prev_track_state
     prev_track_state = [0] * 64
 
-async def main():
+async def main(ir):
+    print("in async main")
     init_prev_lap_numbers()
 
     tasks = []
@@ -265,6 +267,7 @@ async def main():
 prev_lap_numbers = None
 async def monitor_lap_changes(idx):
     global prev_lap_numbers
+    print("monitoring lap changes")
 
     airTemp = round(ir['AirTemp'], 1)
     trackTemp = round(ir['TrackTemp'], 1)
