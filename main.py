@@ -65,7 +65,7 @@ def check_iracing():
 
 # our main loop, where we retrieve data
 # and do something useful with it
-def pushLapData(state, fuelLevel, fuelLastLap, airTemp, lastLapTimestr, classPos, lap, raceLap, windVel, windDir, sessionTimestr, sessionTimeRemainstr,track, PlayerCarMyIncidentCount, trafficValue, sessionID):
+def pushLapData(state, fuelLevel, fuelLastLap, airTemp, lastLapTimestr, classPos, lap, raceLap, windVel, windDir, sessionTimestr, sessionTimeRemainstr,track, PlayerCarMyIncidentCount, trafficValue, myName, sessionID):
     # data = {"Age": 21, "Name": "Benna", "Employed": True, "Vector": [1, 2, 3, 4]}
     if state.pitUpdated == False:
         data = {
@@ -107,7 +107,8 @@ def pushLapData(state, fuelLevel, fuelLastLap, airTemp, lastLapTimestr, classPos
     timestamp = date.today()
 
 
-    db.child("races").child(sessionID).child(myName).set(data)
+    #db.child("races").child(sessionID).child(myName).set(data)#TODO
+    db.child("races").child(sessionID).child("niko").set(data)
     #db.push(data)
 
 
@@ -143,16 +144,20 @@ def loop():
 def competitorDataFlow():
     # Create a dictionary to map CarIdx to UserID
     car_idx_to_user_id = {driver['CarIdx']: driver['UserID'] for driver in ir['DriverInfo']['Drivers']}
+    #print(car_idx_to_user_id)
 
     print("we are in the competitordataflow now")
     airTemp = round(ir['AirTemp'], 1)
     trackTemp = round(ir['TrackTemp'], 1)
     sessionID = ir['WeekendInfo']['SessionID']
+    print(ir['DriverInfo']['DriverCarFuelMaxLtr'])
+    #print(sessionID)
 
     local_lap_times = {}
 
 
     driversData = ir['DriverInfo']['Drivers']
+    #print(driversData)
     driversNames = {}
     for driver in driversData:
         car_idx = driver['CarIdx']
@@ -175,13 +180,23 @@ def competitorDataFlow():
 
     # Find the active session (the one with the highest SessionNum)
     active_session = max(ir['SessionInfo']['Sessions'], key=lambda s: s['SessionNum'])
+    #print(ir['SessionInfo'])
+    #print(ir['SessionInfo']['Sessions'][-1]['SessionType'])
     sessionType = active_session['SessionName']
+    print("track state is " + active_session['SessionTrackRubberState'])
     print(sessionType)
 
     # Process the active session
+
+    print(active_session)
+    print(local_lap_times)
     if active_session['ResultsPositions'] is not None:
+        #for i in range(len(active_session['ResultsPositions'])):
+        #    print(str(i + 1) + ": " + driversNames[active_session['ResultsPositions'][i]['CarIdx']]) # Those who don't have times are not listed
+
         for car in active_session['ResultsPositions']:
-            time.sleep(1)
+            #print("hmm")
+            #time.sleep(1)
             car_idx = car['CarIdx']
             user_id = car_idx_to_user_id[car_idx]  # Get the UserID for the current CarIdx
             lap = ir['CarIdxLap'][car_idx] - 1  # Get the lap number for the current car and increment by 1
@@ -191,7 +206,6 @@ def competitorDataFlow():
             CarClass = driversCars[car_idx]
 
             # ... (rest of the code)
-
             if lap != -2:  # Check if the last_time value is not -1 before updating the database
                 # Check if the lap time has already been recorded for the car's last lap using the local dictionary
                 if car_idx not in local_lap_times or lap not in local_lap_times[car_idx]:
@@ -216,6 +230,7 @@ def competitorDataFlow():
                     })
 
                     print(str(name) + "#" + str(CarNumber) + " latest laptime for lap " + str(lap) + " is: " + str(last_time))
+        #print(local_lap_times)
 
 
 
@@ -227,7 +242,7 @@ def competitorDataFlow():
 #    db.child('AiDictionary').update(competitorAiDataDictionary)
 
 
-    def SFget():
+    def SFget(): #why this run on startup
 
         track = ir['WeekendInfo']['TrackName']
         fuelLevel = round(ir['FuelLevel'],2)
@@ -238,7 +253,7 @@ def competitorDataFlow():
         lastLapTimestr = str(int(lastLapTime // 60)).zfill(2) + ":"\
                          + str(int(lastLapTime - ((lastLapTime // 60)*60))).zfill(2) + "."\
                          + str(round(lastLapTime-int(lastLapTime),4))[2:-1]
-        last3LapsTimes = ir['LapLastNLapTime']
+        #last3LapsTimes = ir['LapLastNLapTime'] # not work
         classPos = ir['PlayerCarClassPosition']
         raceLap = ir['RaceLaps']
         windDir = round(ir['WindDir'])
@@ -254,10 +269,11 @@ def competitorDataFlow():
         trafficArray = ir['CarIdxEstTime']
         trafficValue = len([x for x in trafficArray if -3 < x < 10 and x != 0])
         print(trafficArray)
+        print("hello")
         PlayerCarMyIncidentCount = ir['PlayerCarMyIncidentCount']
 
 
-
+        myName = "niko"#TODO
 
         pushLapData(state, fuelLevel, fuelLastLap, airTemp, lastLapTimestr, classPos, lap, raceLap, windVel, windDir, sessionTimestr, sessionTimeRemainstr, track, PlayerCarMyIncidentCount, trafficValue, myName, sessionID)
 
@@ -277,6 +293,8 @@ def competitorDataFlow():
         print("Current traffic value " + str(trafficValue))
         print("My name is" + state.myName)
         #print(type(last3LapsTimes))
+
+    # are we pitting
 
     if ir['CarIdxTrackSurface'][state.idx] == 2 and state.pitting == False:
         state.sleeptime = 0.1
