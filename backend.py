@@ -64,6 +64,9 @@ for item in a.each():
     stintlapsremaining = round(float(fuellvl) / float(fuelusedlastlap),1)
     try:
         stinttimeremaining = int(stintlapsremaining) * (float(laptime[0:2])*60 + float(laptime[3:5]) + float(laptime[6:])/100)
+        #stinttimeremaining = str(int(stinttimeremaining // 60)).zfill(2) + ":"\
+        #                 + str(int(stinttimeremaining - ((stinttimeremaining // 60)*60))).zfill(2) + "."\
+        #                 + str(round(stinttimeremaining-int(stinttimeremaining),4))[2:-1]
         #print(float(laptime[0:2])*60 + float(laptime[3:5]) + float(laptime[6:])/100)
         #print( stinttimeremaining)
         #print(stinttimeremaining - stinttimeremaining // 60)
@@ -89,11 +92,44 @@ for item in a.each():
 
     except:
         print("Bad lap time")
+        totallapsremaining = "???"
+        finalstintlaps = "???"
+        stinttimeremaining = "???"
     #print(stintlapsremaining)
     #print(int(stintlapsremaining))
 
     #finalstintlaps = 0
     print(sessiontimeremaining)
+    data = {
+        "Fuel Level": fuellvl,
+        "Fuel used": fuelusedlastlap,
+        "Air temperature": airtemp,
+        "Laptime": laptime,
+        "Position": position,
+        "Laps complete": lapscomplete,
+        "Race laps complete": racelapscomplete,
+        "Wind velocity": windvelocity,
+        "Wind direction": winddirection,
+        "Session time elapsed": sessiontimeelapsed,
+        "Session time remaining": sessiontimeremaining,
+        "Player car incident amount": cumulativeincident,
+        "Fuel tank size": fueltanksize,
+        "Session laps remaining": totallapsremaining,
+        "Final stint lap count": finalstintlaps,
+        "Stint time remaining": stinttimeremaining
+    };
+    db.child("nikon test testing test").child("roadamerica full 2023-03-31 20:18:05").child("Laps").child("Lap " + lapscomplete).set(data)
+    raceVariables = {
+        "Position": position,
+        "Gap to leader": "TODO",
+        "Incident amount": cumulativeincident,
+        "Final stint lap count": finalstintlaps,
+        "Stint time remaining": stinttimeremaining
+    };
+    db.child("nikon test testing test").child("roadamerica full 2023-03-31 20:18:05").child("Race Variables").update(raceVariables)
+        #"Current traffic value": tra,
+        #"My name is": str(state.myName)
+
 
 
 

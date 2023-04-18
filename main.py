@@ -3,6 +3,9 @@ import time
 import pyrebase
 from datetime import date
 
+from startup import *
+from Classes import State
+
 
 config = {
     "apiKey": "AIzaSyB5-lkeChuEgkJ0UXYbf6WUP33fIBNYVdA",
@@ -21,29 +24,7 @@ db = firebase.database()
 
 
 
-# this is our State class, with some helpful variables
-class State:
-    ir_connected = False
-    last_car_setup_tick = -1
-    lap_counter = 0
-    previousFuelLevel = 0
-    in_startup = 1
-    pit_flag = 0
-    t = time.localtime()
-    start_time = time.strftime("%H:%M:%S", t)
-    a = 0
-    sleeptime = 0.5
-    idx = 0
-    inPitBox = False
-    onPitRoad = False
-    pitting = False
-    pitLaneTime = 0
-    pitBoxTime = 0
-    pitCounter = 0
-    pitUpdated = False
-    myName = ""
-    competitorAiDataDictionary = {}
-    competitorRaceDataDictionary = {}
+
 
 
 
@@ -123,20 +104,22 @@ def loop():
     ir.freeze_var_buffer_latest()
 
     if state.in_startup == 1:
-        state.in_startup = 0
+        start(state, ir)
+        pass
+        #state.in_startup = 0
         #print(ir['DriverInfo']['DriverCarIdx'])
-        state.idx = ir['DriverInfo']['DriverCarIdx']
-        state.previousFuelLevel = ir['FuelLevel']
+        #state.idx = ir['DriverInfo']['DriverCarIdx']
+        #state.previousFuelLevel = ir['FuelLevel']
 
-        driversData = ir['DriverInfo']['Drivers']
-        driversNames = {}
-        for driver in driversData:
-            car_idx = driver['CarIdx']
-            name = driver['UserName']
-            driversNames[car_idx] = name
+        #driversData = ir['DriverInfo']['Drivers']
+        #driversNames = {}
+        #for driver in driversData:
+        #    car_idx = driver['CarIdx']
+        #    name = driver['UserName']
+        #    driversNames[car_idx] = name
 
-        state.myName = driversNames[state.idx]
-        sessionID = ir['WeekendInfo']['SessionID']
+        #state.myName = driversNames[state.idx]
+        #state.sessionID = ir['WeekendInfo']['SessionID']
 
 
 
@@ -185,6 +168,10 @@ def competitorDataFlow():
     sessionType = active_session['SessionName']
     print("track state is " + active_session['SessionTrackRubberState'])
     print(sessionType)
+    print("Direction is")
+    print(ir['WindDir'])
+    print("Velocity is")
+    print(ir['WindVel'])
 
     # Process the active session
 
@@ -256,8 +243,8 @@ def competitorDataFlow():
         #last3LapsTimes = ir['LapLastNLapTime'] # not work
         classPos = ir['PlayerCarClassPosition']
         raceLap = ir['RaceLaps']
-        windDir = round(ir['WindDir'])
-        windVel = round(ir['WindVel'])
+        windDir = round(ir['WindDir']*180/3.14,1)
+        windVel = round(ir['WindVel'],1)
         sessionTime = ir['SessionTime']
         sessionTimestr = str(int(sessionTime // 3600)).zfill(2) + ":"\
                          + str(int((sessionTime - sessionTime //3600 * 3600)//60)).zfill(2) + ":" \
@@ -359,9 +346,12 @@ if __name__ == '__main__':
     print("ready", end="")
     time.sleep(1)
     print("\r go!")
+
     # initializing ir and state
     ir = irsdk.IRSDK()
     state = State()
+    #start(state, ir)
+    #print(state.debug)
     #start = time.time()
 
 
