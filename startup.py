@@ -1,3 +1,4 @@
+
 def start(state, ir):
     state.in_startup = 0
     print(ir['DriverInfo']['DriverCarIdx'])

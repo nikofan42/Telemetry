@@ -210,6 +210,7 @@ def competitorDataFlow():
 
                     # Update AI analysis data in Firebase Realtime Database using UserID
                     AI_analysis_ref = db.child(f'AiDictionary/{user_id}/{CarClass}/{sessionID}/')
+
                     AI_analysis_ref.update({
                         f'{sessionType}/lapTimes/{lap}': last_time,
                         f'{sessionType}/trackTemp/{lap}': trackTemp,
