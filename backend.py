@@ -16,36 +16,15 @@ config = {
 firebase = pyrebase.initialize_app(config)
 db = firebase.database()
 
-#a = db.child("test").child("roadamerica full 2023-03-31 20:18:05").get()
-#print(a.key())
-#flag = False
-#for item in a.each():
-#    if flag: break#
-#
-#    b = item.key()
-#    print(b)
-#    b = str(int(b[3:])).zfill(3)#
 
-#    print(b)
-#    #db.child("nikon test").child("roadamerica full 2023-03-31 20:18:05").child("Lap " + b).push(item.val())
-#    #data ={"Age": 21, "Name": "Benna", "Employed": True, "Vector": [1, 2, 3, 4]}
-
-#    db.child("nikon test").child("roadamerica full 2023-03-31 20:18:05").child("Lap " + b).set(item.val())
-    #flag = True
-
-#lst = [None] * len(a.each())
-#print(len(lst))
-
-
-#a = db.child("nikon test").child("roadamerica full 2023-03-31 20:18:05").get()
 a = db.child("nikon testing setit").child("0").child("TESTING").get()
 counter = 0
 for item in a.each():
     counter = counter + 1
     data = item.val()
     b = item.key()
-    #lap = str(int(b[3:]))
-    lap = str(int(b))
+    lap = str(int(b[3:]))
+    #lap = str(int(b))
     airtemp = data['Air temperature']
     fuellvl = data['Fuel Level']
     fuelusedlastlap = data['Fuel used']
@@ -71,19 +50,22 @@ for item in a.each():
     #fueltanksize = data['Fuel tank size']
     if counter == 0:
         fuelusedlastlap = "1.0"
+
+    if float(fuelusedlastlap == "0.0"):
+        fuelusedlastlap = "0.1"
     #print()
     #print("Lap " + lap)
     #print(float(fuellvl))
     #print(laptime)
-    stintlapsremaining = round(float(fuellvl) / float(fuelusedlastlap),1)
-    print(round(float(fuellvl)))
-    print(float(fuelusedlastlap))
-    print(stintlapsremaining)
+    stintlapsremaining = round(float(fuellvl) / float(fuelusedlastlap))
+    #print(round(float(fuellvl)))
+    #print(float(fuelusedlastlap))
+    #print(stintlapsremaining)
     laptimefloat = float(laptime[0:2])*60 + float(laptime[3:5]) + float(laptime[6:])/100
-    print(laptimefloat)
+    #print(laptimefloat)
 
-    stinttimeremaining = int(stintlapsremaining) * (float(laptime[0:2])*60 + float(laptime[3:5]) + float(laptime[6:])/100)
-    print(stinttimeremaining)
+    stinttimeremaining = round(int(stintlapsremaining) * (float(laptime[0:2])*60 + float(laptime[3:5]) + float(laptime[6:])/100))
+    #print(stinttimeremaining)
         #stinttimeremaining = str(int(stinttimeremaining // 60)).zfill(2) + ":"\
         #                 + str(int(stinttimeremaining - ((stinttimeremaining // 60)*60))).zfill(2) + "."\
         #                 + str(round(stinttimeremaining-int(stinttimeremaining),4))[2:-1]
@@ -92,14 +74,36 @@ for item in a.each():
         #print(stinttimeremaining - stinttimeremaining // 60)
         #print(float(fuelusedlastlap))
         #print(str(int(stinttimeremaining // 60)).zfill(2) + ":" + str(int(stinttimeremaining - stinttimeremaining // 60 * 60)).zfill(2))
-    totallapsremaining = (float(sessiontimeremaining[0:2]) * 3600 + float(sessiontimeremaining[3:5]) * 60 \
-                              + float(sessiontimeremaining[6:])) / (float(laptime[0:2]) * 60 + float(laptime[3:5]) \
-                                                                    + float(laptime[6:]) / 100)
-    stintlength = (fueltanksize / float(fuelusedlastlap))
-    currentstintremaining = float(fuellvl)/fueltanksize
+    #print("Hi")
+    #print(sessiontimeremaining)
+    #print(lap)
+    #print(sessiontimeremaining.rfind(":"))
+    indices = []
+    for i in range(len(sessiontimeremaining)):
+        if sessiontimeremaining[i] == ":":
+            indices.append(i)
+
+    #for i in(indices):
+    #    print(i)
+    #print(min(indices))
+    #print(max(indices))
+    #print(sessiontimeremaining[0:min(indices)])
+    #print(sessiontimeremaining[min(indices) + 1:max(indices)])
+    #print(sessiontimeremaining[max(indices) + 1:])
+
+    #print(float(laptime[0:2]) * 60 + float(laptime[3:5]) \
+    #                                                                + float(laptime[6:]) / 100)
+
+    #return [i for i, letter in enumerate(s) if letter == ch]
+    try:
+        totallapsremaining = round((float(sessiontimeremaining[0:min(indices)]) * 3600 + float(sessiontimeremaining[min(indices) + 1:max(indices)]) * 60 \
+                              + float(sessiontimeremaining[max(indices) + 1:])) / (float(laptime[0:2]) * 60 + float(laptime[3:5]) \
+                                                                    + float(laptime[6:]) / 100),1)
+        stintlength = (fueltanksize / float(fuelusedlastlap))
+        currentstintremaining = float(fuellvl)/fueltanksize
         #finalstintlaps = (totallapsremaining / stintlength - (fuellvl/fueltanksize) / stintlength \
         #                    -int(totallapsremaining / stintlength - (fuellvl/fueltanksize) / stintlength))
-    finalstintlaps = round((totallapsremaining / stintlength - currentstintremaining \
+        finalstintlaps = round((totallapsremaining / stintlength - currentstintremaining \
                                 - int(totallapsremaining / stintlength - currentstintremaining))*stintlength,1)
 
         #finalstintlaps = ((totallapsremaining / (fueltanksize / float(fuelusedlastlap)))\
@@ -110,43 +114,52 @@ for item in a.each():
         #print((fueltanksize / float(fuelusedlastlap))) #stintinmitta
         #print(totallapsremaining)
 
-
-    print("Bad lap time")
-    totallapsremaining = "???"
-    finalstintlaps = "???"
-    stinttimeremaining = "???"
+    except:
+        print("Bad lap time on lap " + str(lap) + ", it is:")
+        print(laptime)
+        totallapsremaining = "???"
+        finalstintlaps = "???"
+        stinttimeremaining = "???"
     #print(stintlapsremaining)
     #print(int(stintlapsremaining))
 
     #finalstintlaps = 0
-    print(sessiontimeremaining)
     data = {
-        "Fuel Level": fuellvl,
-        "Fuel used": fuelusedlastlap,
-        "Air temperature": airtemp,
+        "Fuel Level(l)": fuellvl,
+        "Fuel used(l)": fuelusedlastlap,
+        "Air temperature(C)": airtemp,
         "Laptime": laptime,
         "Position": position,
         "Laps complete": lapscomplete,
         "Race laps complete": racelapscomplete,
-        "Wind velocity": windvelocity,
-        "Wind direction": winddirection,
+        "Wind velocity(m per s)": windvelocity,
+        "Wind direction(deg)": winddirection,
         "Session time elapsed": sessiontimeelapsed,
         "Session time remaining": sessiontimeremaining,
         "Player car incident amount": cumulativeincident,
-        "Fuel tank size": fueltanksize,
+        "Fuel tank size(l)": fueltanksize,
         "Session laps remaining": totallapsremaining,
         "Final stint lap count": finalstintlaps,
-        "Stint time remaining": stinttimeremaining
+        "Stint time remaining(s)": stinttimeremaining,
+        "Session name": sessionName,
+        "Session ID": sessionID,
+        "Gap to Leader": gap2Leader,
+        "Name": name,
+        "Timestamp": timestamp,
+        "Track state": trackState,
+        "Pitted last lap": pittedLastLap,
+        "Pit box time": pitBoxTime,
+        "Pit lane time": pitLaneTime
     };
-    db.child("nikon test testing test").child("testing").child("Laps").child("Lap " + lapscomplete).set(data)
+    db.child("nikon test testing test").child(sessionName).child("Laps").child("Lap " + lapscomplete).set(data)
     raceVariables = {
         "Position": position,
-        "Gap to leader": "TODO",
+        "Gap to leader(s)": gap2Leader,
         "Incident amount": cumulativeincident,
         "Final stint lap count": finalstintlaps,
-        "Stint time remaining": stinttimeremaining
+        "Stint time remaining(s)": stinttimeremaining
     };
-    db.child("nikon test testing test").child("roadamerica full 2023-03-31 20:18:05").child("Race Variables").update(raceVariables)
+    db.child("nikon test testing test").child(sessionName).child("Race Variables").update(raceVariables)
         #"Current traffic value": tra,
         #"My name is": str(state.myName)
 

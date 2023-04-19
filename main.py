@@ -52,14 +52,15 @@ def loop():
     #print(ir['SessionInfo']['Sessions'][ir['SessionNum']]['SessionName'])
     #print(ir['SessionInfo']['Sessions'])
     #print(ir['SessionNum'])
-    ir['LastLapTime']
-    a = 75.0
-    ab = str(int(a // 60)).zfill(2) + ":" \
-    + str(int(a - ((a // 60) * 60))).zfill(2) + "." \
-    + str(round(a - int(a), 4))[2:-1]
-    print(a//60*60)
-    print(str(int(a //60)).zfill(2) + ":" + str(round(a - a // 60 *60,3)).ljust(6,'0'))
-    print(ab)
+    #print(ir['LastLapTime'])
+    #a = ir['LastLapTime']
+    #a = 75.0
+    #ab = str(int(a // 60)).zfill(2) + ":" \
+    #+ str(int(a - ((a // 60) * 60))).zfill(2) + "." \
+    #+ str(round(a - int(a), 4))[2:-1]
+    #print(a//60*60)
+    #print(str(int(a //60)).zfill(2) + ":" + str(round(a - a // 60 *60,3)).ljust(6,'0'))
+    #print(ab)
 
     if state.in_startup == 1:
         start(state, ir)
