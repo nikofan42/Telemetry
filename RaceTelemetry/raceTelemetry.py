@@ -1,4 +1,4 @@
-from pyirsdk_wrapper import PyirsdkWrapper
+from pyirsdk_wrapper import initialize_irsdk
 import time
 import pyrebase
 import asyncio
@@ -9,7 +9,7 @@ from Classes import *
 
 
 # Instantiate the PyirsdkWrapper class
-ir = PyirsdkWrapper()
+ir = initialize_irsdk()
 
 config = {
     "apiKey": "AIzaSyB5-lkeChuEgkJ0UXYbf6WUP33fIBNYVdA",

@@ -1,28 +1,42 @@
-import importlib
-import pickle
-import itertools
-import os
-import sys
+import irsdk
 
-# Add the project root directory to the Python path
-project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
-sys.path.insert(0, project_root)
+class PyirsdkWrapper(irsdk.IRSDK):
+    def __init__(self, recorded_data=None):
+        self.recorded_data_generator = (data for data in recorded_data) if recorded_data else None
+        self.use_recorded_data = bool(recorded_data)
+        super().__init__()
 
-import pyirsdk_wrapper
-import raceTelemetry
+    def get_telemetry(self):
+        if self.use_recorded_data:
+            try:
+                return next(self.recorded_data_generator)
+            except StopIteration:
+                print("End of recorded data.")
+                return None
+        else:
+            return None
 
-telemetry_script = importlib.import_module('raceTelemetry')
+    def startup(self, *args, **kwargs):
+        if not self.use_recorded_data:
+            super().startup(*args, **kwargs)
 
-def load_recorded_data(file_path):
-    with open(file_path, 'rb') as f:
-        recorded_data = pickle.load(f)
-    return recorded_data
+    def __getitem__(self, key):
+        if self.use_recorded_data:
+            telemetry_data = self.get_telemetry()
+            if telemetry_data is not None and key in telemetry_data:
+                return telemetry_data[key]
 
-recorded_data = load_recorded_data(os.path.join(project_root, 'telemetry_data.pkl'))
+        if not self.use_recorded_data:
+            # Ensure data is updated before accessing live data
+            if not self.is_initialized:
+                self.startup()
+            if not self.is_connected:
+                self.shutdown()
+                self.startup()
 
-telemetry_script.irsdk = pyirsdk_wrapper.PyirsdkWrapper(recorded_data)
+            return super().__getitem__(key)
+        else:
+            raise KeyError(f"Key '{key}' not found in recorded data.")
 
-if hasattr(telemetry_script, 'main'):
-    telemetry_script.main()
-else:
-    print("No main function found in the telemetry script.")
+def initialize_irsdk(recorded_data=None):
+    return PyirsdkWrapper(recorded_data)
