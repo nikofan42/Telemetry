@@ -1,17 +1,16 @@
-from pyirsdk_wrapper import initialize_irsdk
+import irsdk
 import time
 import pyrebase
-import asyncio
-import aiosched
+import datetime
 
-from datetime import date
-from Classes import *
+from startup import *
+from Classes import State, Firebase
+from iracingDataHandler import *
 
 
-# Instantiate the PyirsdkWrapper class
-ir = initialize_irsdk()
 
-config = {
+fb = Firebase()
+fb.config = {
     "apiKey": "AIzaSyB5-lkeChuEgkJ0UXYbf6WUP33fIBNYVdA",
     "authDomain": "iracingai.firebaseapp.com",
     "databaseURL": "https://iracingai-default-rtdb.europe-west1.firebasedatabase.app",
@@ -22,9 +21,8 @@ config = {
     "appId": "1:536602400542:web:17ef9c0bedfcf074209b0f",
     "measurementId": "G-CDHEMNLTZT"
 };
-
-firebase = pyrebase.initialize_app(config)
-db = firebase.database()
+fb.firebase = pyrebase.initialize_app(fb.config)
+fb.db = fb.firebase.database()
 
 
 def check_iracing():
