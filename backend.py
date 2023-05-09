@@ -1,5 +1,8 @@
 import pyrebase
 
+#ingest -> poista
+#
+
 config = {
     "apiKey": "AIzaSyB5-lkeChuEgkJ0UXYbf6WUP33fIBNYVdA",
     "authDomain": "iracingai.firebaseapp.com",
@@ -16,9 +19,23 @@ config = {
 firebase = pyrebase.initialize_app(config)
 db = firebase.database()
 
+#x = db.child("abc").get()
+#p#rint(x)
+#print(sys.getsizeof(x)*100000/1000)
+#for i in range(100000):
+#    if x.each() == None:
+#        print("hell yeah")
+#for item in x.each():
+#    print(item)
 
-a = db.child("nikon testing setit").child("0").child("TESTING").get()
+a = db.child("nikon testing setit").child("203948265").child("RACE").get()
+print(a)
 counter = 0
+
+
+for item in a.each():
+    print(item.key()[-3:])
+
 for item in a.each():
     counter = counter + 1
     data = item.val()
@@ -28,7 +45,8 @@ for item in a.each():
     airtemp = data['Air temperature']
     fuellvl = data['Fuel Level']
     fuelusedlastlap = data['Fuel used']
-    lapscomplete = data['Laps complete']
+    #lapscomplete = data['Laps complete']
+    lapscomplete = item.key()[-3:]
     laptime = data['Laptime']
     cumulativeincident = data['Player car incident amount']
     position = data['Position']
@@ -151,6 +169,7 @@ for item in a.each():
         "Pit box time": pitBoxTime,
         "Pit lane time": pitLaneTime
     };
+    print(lapscomplete)
     db.child("nikon test testing test").child(sessionName).child("Laps").child("Lap " + lapscomplete).set(data)
     raceVariables = {
         "Position": position,
