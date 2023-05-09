@@ -9,6 +9,8 @@ import datetime
 from startup import *
 from Classes import State
 from iracingDataHandler import *
+from iracing_connection import check_iracing
+from initialization import init_prev_lap_numbers, init_prev_track_state  # Import the functions from initialization.py
 
 cred = credentials.Certificate("../auth.json")
 firebase_admin.initialize_app(cred, {'databaseURL': 'https://iracingai-default-rtdb.europe-west1.firebasedatabase.app'})
@@ -16,29 +18,11 @@ fb_db = firebase_db.reference()
 
 state = State()
 
-def check_iracing():
-    if state.ir_connected and not (ir.is_initialized and ir.is_connected):
-        state.ir_connected = False
-        # don't forget to reset your State variables
-        state.last_car_setup_tick = -1
-        # we are shutting down ir library (clearing all internal variables)
-        ir.shutdown()
-        print('irsdk disconnected')
-    elif not state.ir_connected and ir.startup() and ir.is_initialized and ir.is_connected:
-        state.ir_connected = True
-        print('irsdk connected')
-
-
-def init_prev_lap_numbers():
-    global prev_lap_numbers
-    prev_lap_numbers = [0] * 64
-
-def init_prev_track_state():
-    global prev_track_state
-    prev_track_state = [0] * 64
 
 async def main():
-    init_prev_lap_numbers()
+    global prev_lap_numbers  # Add this line
+    prev_lap_numbers = init_prev_lap_numbers()
+    init_prev_track_state()
 
     tasks = []
 
@@ -152,7 +136,7 @@ async def monitor_lap_changes(idx):
                                 #print(CarNumber + "Last lap:" + last_time + " tracktemp: " + trackTemp + " airtemp: " + airTemp)
 
                                 # Update competitor data in Firebase Realtime Database using CarIdx
-                                races_ref = fb_db.child(f'racesTest/{sessionID}/{state.myName}/competitorData/{CarNumber} - {teamName}/')
+                                races_ref = fb_db.child(f'racesTest2/{sessionID}/{state.myName}/competitorData/{CarNumber}/')
                                 races_ref.update({
                                     f'/Class': CarClass,
                                     f'/trackName': trackName,
@@ -167,7 +151,7 @@ async def monitor_lap_changes(idx):
                                 })
 
                                 # Update AI analysis data in Firebase Realtime Database using UserID
-                                AI_analysis_ref = fb_db.child(f'AiDictionaryTest/{user_id}/{CarClass}/{trackName}/{sessionID}/')
+                                AI_analysis_ref = fb_db.child(f'AiDictionaryTest2/{user_id}/{CarClass}/{trackName}/{sessionID}/')
                                 AI_analysis_ref.update({
                                     f'{sessionType}/lapTimes/{lap}': last_time,
                                     f'{sessionType}/trackTemp/{lap}': trackTemp,
@@ -191,21 +175,12 @@ if __name__ == '__main__':
     # initializing ir and state
     ir = irsdk.IRSDK()
     state = State()
-    #start = time.time()
-
-
-
-
-
-    #print(type(ir))
 
     try:
         # infinite loop
-
         while True:
-
             # check if we are connected to iracing
-            check_iracing()
+            check_iracing(state, ir)
 
             # if we are, then process data
             if state.ir_connected:
