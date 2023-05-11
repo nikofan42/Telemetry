@@ -103,7 +103,7 @@ def SFget(state,ir, fb):
 
     state.previousFuelLevel = ir['FuelLevel']
 
-    fb.db.child("nikon testing setit").child(ir['WeekendInfo']['SessionID'])\
+    fb.db.child("Backend Ingest").child(state.appID).child(ir['WeekendInfo']['SessionID'])\
         .child(ir['SessionInfo']['Sessions'][ir['SessionNum']]['SessionName'])\
         .child("Lap " + str(ir['Lap'] - 1).zfill(3)).set(SFdata)
 

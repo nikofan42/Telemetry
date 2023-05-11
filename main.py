@@ -204,6 +204,13 @@ def competitorDataFlow():
 
 
 if __name__ == '__main__':
+    while True:
+        id = input("Set number")
+        if id.isnumeric() and len(id) ==6:
+            print("it is!")
+
+            break
+
     print("ready", end="")
     time.sleep(1)
     print("\r go!")
@@ -211,6 +218,7 @@ if __name__ == '__main__':
     # initializing ir and state
     ir = irsdk.IRSDK()
     state = State()
+    state.appID = id
     #start(state, ir)
     #print(state.debug)
     #start = time.time()
