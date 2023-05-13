@@ -1,6 +1,8 @@
 import irsdk
 import time
-import pyrebase
+import firebase_admin
+from firebase_admin import credentials
+from firebase_admin import db as firebase_db
 import datetime
 
 from startup import *
@@ -9,74 +11,29 @@ from iracingDataHandler import *
 
 
 
-fb = Firebase()
-fb.config = {
-    "apiKey": "AIzaSyB5-lkeChuEgkJ0UXYbf6WUP33fIBNYVdA",
-    "authDomain": "iracingai.firebaseapp.com",
-    "databaseURL": "https://iracingai-default-rtdb.europe-west1.firebasedatabase.app",
-    "projectId": "iracingai",
-    "databaseURL": "https://iracingai-default-rtdb.europe-west1.firebasedatabase.app/",
-    "storageBucket": "iracingai.appspot.com",
-    "messagingSenderId": "536602400542",
-    "appId": "1:536602400542:web:17ef9c0bedfcf074209b0f",
-    "measurementId": "G-CDHEMNLTZT"
-};
-fb.firebase = pyrebase.initialize_app(fb.config)
-fb.db = fb.firebase.database()
+cred = credentials.Certificate("auth.json")
+firebase_admin.initialize_app(cred, {'databaseURL': 'https://iracingai-default-rtdb.europe-west1.firebasedatabase.app'})
+db = firebase_db.reference()
 
-
-
-
-
-
-
-
-
-
-# our main loop, where we retrieve data
-# and do something useful with it
 
 def loop():
-    # on each tick we freeze buffer with live telemetry
-    # it is optional, but useful if you use vars like CarIdxXXX
-    # this way you will have consistent data from those vars inside one tick
-    # because sometimes while you retrieve one CarIdxXXX variable
-    # another one in next line of code could change
-    # to the next iracing internal tick_count
-    # and you will get incosistent data
+
     ir.freeze_var_buffer_latest()
 
-    #print(state.pitUpdated)
-    #print(ir['WeekendInfo']['SessionID'])
-    #print(ir['CarIdxF2Time'][state.idx])
-    #print(ir['SessionInfo']['Sessions'][ir['SessionNum']]['SessionName'])
-    #print(ir['SessionInfo']['Sessions'])
-    #print(ir['SessionNum'])
-    #print(ir['LastLapTime'])
-    #a = ir['LastLapTime']
-    #a = 75.0
-    #ab = str(int(a // 60)).zfill(2) + ":" \
-    #+ str(int(a - ((a // 60) * 60))).zfill(2) + "." \
-    #+ str(round(a - int(a), 4))[2:-1]
-    #print(a//60*60)
-    #print(str(int(a //60)).zfill(2) + ":" + str(round(a - a // 60 *60,3)).ljust(6,'0'))
-    #print(ab)
+
 
     if state.in_startup == 1:
         start(state, ir)
 
     lap = ir['Lap']
-    #print(lap)
+
     checkifpitting(state, ir)
     if lap != state.lap_counter:
             state.lap_counter = lap
             time.sleep(2) #iracing takes a moment to calculate last laptime
-            SFget(state, ir, fb)
+            SFget(state, ir, db)
 
-        #state.in_startup = 0
-        #print(ir['DriverInfo']['DriverCarIdx'])
-        #state.idx = ir['DriverInfo']['DriverCarIdx']
-        #state.previousFuelLevel = ir['FuelLevel']
+
 
             # do these once a lap
             driversData = ir['DriverInfo']['Drivers']
@@ -164,7 +121,7 @@ def competitorDataFlow():
                     local_lap_times.setdefault(car_idx, {})[lap] = last_time
 
                     # Update competitor data in Firebase Realtime Database using CarIdx
-                    races_ref = fb.db.child(f'races/{sessionID}/competitorData/{CarNumber}/')
+                    races_ref = db.child(f'races/{sessionID}/competitorData/{CarNumber}/')
                     races_ref.update({
                         f'/Class': CarClass,
                         f'{sessionType}/lapTimes/{lap}': last_time,
@@ -173,7 +130,7 @@ def competitorDataFlow():
                     })
 
                     # Update AI analysis data in Firebase Realtime Database using UserID
-                    AI_analysis_ref = fb.db.child(f'AiDictionary/{user_id}/{CarClass}/{sessionID}/')
+                    AI_analysis_ref = db.child(f'AiDictionary/{user_id}/{CarClass}/{sessionID}/')
 
                     AI_analysis_ref.update({
                         f'{sessionType}/lapTimes/{lap}': last_time,
@@ -183,15 +140,6 @@ def competitorDataFlow():
 
                     print(str(name) + "#" + str(CarNumber) + " latest laptime for lap " + str(lap) + " is: " + str(last_time))
         #print(local_lap_times)
-
-
-
-
-#def pushCompetitorRaceDataDictionary(competitorRaceDataDictionary, sessionID):
-#    db.child('races').child(sessionID).child(state.myName).update(competitorRaceDataDictionary)
-
-#def pushCompetitorAiDataDictionary(competitorAiDataDictionary):
-#    db.child('AiDictionary').update(competitorAiDataDictionary)
 
 
 
