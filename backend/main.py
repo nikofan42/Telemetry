@@ -1,5 +1,10 @@
+#AJA TÄMÄ FILE
+
+
+#from backend import *
 import pyrebase
 import time
+from backend import *
 
 
 
@@ -20,28 +25,20 @@ db = firebase.database()
 
 
 
-
 i = 0
-data = {"a1":3}
-db.child("Backend Ingest").update(data)
-print("this")
-x = db.child("Backend Ingest").get()
-for item in x.each():
-    print(item.key())
-print(x.each())
-print("is")
 
-while True and i < 10:
+
+while True: # tätä loopataan maailman loppuun asti
     x = db.child("Backend Ingest").get()
     print(x.each())
-    if x.each() == None:
+    if x.each() == None: # Onko Backend Ingest -kansio tyhjä
 
-        time.sleep(1)
+        time.sleep(10) #mene nukkumaan jos on, aika on sekunneissa
         print("it is empty yes")
     else:
-        pass
+        for item in x.each():
+            processIngest(item.key()) #
+        time.sleep(20) #20 sekkaa lepoa kun on hoitanut koko Backend Ingest Kansion.
 
     i = i + 1
 
-for item in x.each():
-    print(item.key())

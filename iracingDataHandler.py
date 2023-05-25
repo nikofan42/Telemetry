@@ -18,7 +18,7 @@ def check_iracing(state, ir):
         print('irsdk connected')
 
 
-def SFget(state,ir, fb):
+def SFget(state, ir, db):
     print("juhuu")
 
     track = ir['WeekendInfo']['TrackName']
@@ -103,33 +103,13 @@ def SFget(state,ir, fb):
 
     state.previousFuelLevel = ir['FuelLevel']
 
-    fb.db.child("Backend Ingest").child(state.appID).child(ir['WeekendInfo']['SessionID'])\
+    db.child("Backend Ingest").child('032677').child(str(ir['WeekendInfo']['SessionID']))\
         .child(ir['SessionInfo']['Sessions'][ir['SessionNum']]['SessionName'])\
         .child("Lap " + str(ir['Lap'] - 1).zfill(3)).set(SFdata)
 
 
 
 
-    #pushLapData(state, fuelLevel, fuelLastLap, airTemp, lastLapTimestr, classPos, lap, raceLap, windVel, windDir, sessionTimestr, sessionTimeRemainstr, track, PlayerCarMyIncidentCount, trafficValue, myName, sessionID)
-    #pushLapData(state, fb, fuelLevel, fuelLastLap, airTemp, lastLapTimestr, classPos, lap, raceLap, windVel, windDir,
-    #            sessionTimestr, sessionTimeRemainstr, track, PlayerCarMyIncidentCount, trafficValue, myName, sessionID)
-
-    #print("Fuel remaining " +str(fuelLevel))
-
-    #print("Fuel used " + str(fuelLastLap))
-    #print("Air temp is " +str(airTemp))
-    #print("Laptime was " + str(lastLapTime))
-    #print("Laptime was " + lastLapTimestr)
-    #print("Position " + str(classPos))
-    #print("Laps completed " + str(lap))
-    #print("Race laps completed " + str(raceLap))
-    #print("Wind is " + str(windVel) + " " + str(windDir))
-    #print("Session time elapsed " + str(sessionTimestr))
-    #print("Session time remaining " + str(sessionTimeRemainstr))
-    #print("Current incident count " + str(PlayerCarMyIncidentCount))
-    #print("Current traffic value " + str(trafficValue))
-    #print("My name is" + state.myName)
-    #print(type(last3LapsTimes))
 
 def checkifpitting(state, ir):
     if ir['CarIdxTrackSurface'][state.idx] == 2 and state.pitting == False:
@@ -183,48 +163,4 @@ def checkifpitting(state, ir):
             # print(ir['OnPitRoad'])
             # print(ir['CarIdxTrackSurface'][idx])
 
-#def pushLapData(fb, state, fuelLevel, fuelLastLap, airTemp, lastLapTimestr, classPos, lap, raceLap, windVel, windDir, sessionTimestr, sessionTimeRemainstr,track, PlayerCarMyIncidentCount, trafficValue, myName, sessionID):
-#    # data = {"Age": 21, "Name": "Benna", "Employed": True, "Vector": [1, 2, 3, 4]}
-#    if state.pitUpdated == False:
-#        data = {
-#            "Fuel Level": str(fuelLevel),
-###            "Fuel used": str(fuelLastLap),
-  #          "Air temperature": str(airTemp),
-  #          "Laptime": lastLapTimestr,
-  #          "Position": str(classPos),
-  #          "Laps complete": str(lap).zfill(3),
-  #          "Race laps complete": str(raceLap),
-  #          "Wind velocity": str(windVel),
-  #          "Wind direction": str(windDir),
-  #          "Session time elapsed": str(sessionTimestr),
-  #          "Session time remaining": str(sessionTimeRemainstr),
-  #          "Player car incident amount": str(PlayerCarMyIncidentCount),
-  #          "Current traffic value": str(trafficValue),
-  #          "My name is": str(state.myName),
-  #####    }
-   # else:
-   #     data = {
-   #         "Fuel Level": str(fuelLevel),
-   #         "Fuel used": str(fuelLastLap),
-   #         "Air temperature": str(airTemp),
-   ##         "Laptime": lastLapTimestr,
-   #         "Position": str(classPos),
-   #         "Laps complete": str(lap).zfill(3),
-   #         "Race laps complete": str(raceLap),
-   #         "Wind velocity": str(windVel),
-   #         "Wind direction": str(windDir),
-   #         "Session time elapsed": str(sessionTimestr),
-    #        "Session time remaining": str(sessionTimeRemainstr),
-   # #        "Player car incident amount": str(PlayerCarMyIncidentCount),
-   #         "Pitlane time": str(round(state.pitLaneTime,2)),
-   #         "Pitbox time": str(round(state.pitBoxTime,2)),
-   #         "Current traffic value": str(trafficValue),
-   #         "My name is": str(state.myName)
-   #     }
-   #     state.pitUpdated = False
-    #timestamp = datetime.date.today()
 
-
-    #db.child("races").child(sessionID).child(myName).set(data)#TODO
-    #fb.db.child("races").child(sessionID).child("niko").set(data)
-    #db.push(data)
