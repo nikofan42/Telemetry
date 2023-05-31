@@ -185,6 +185,8 @@ if __name__ == '__main__':
             # maximum you can use is 1/60
             # cause iracing updates data with 60 fps
             time.sleep(state.sleeptime)
+
+
     except KeyboardInterrupt:
         # press ctrl+c to exit
         pass
