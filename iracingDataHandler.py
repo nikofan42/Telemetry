@@ -60,6 +60,7 @@ def SFget(state, ir, db):
         laptime = str(int(ir['LapLastLapTime'] //60)).zfill(2) + ":" + str((int(ir['LapLastLapTime'])\
                         - int(ir['LapLastLapTime']) // 60 *60)).zfill(2) + "." + str(round(ir['LapLastLapTime'] % int(ir['LapLastLapTime']),3))[2:].ljust(3,'0')
     else:
+        print("in else")
         laptime = "00:00.00"
     SFdata = {
         "Fuel Level": str(round(ir['FuelLevel'],2)),
