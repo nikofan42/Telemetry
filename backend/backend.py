@@ -194,14 +194,21 @@ def processIngest(appID, db):
                         "Last lap time":laptime,
                         "Lap:": str(int(lapscomplete) + 1)
                     };
+                    print(laptime)
 
-                    #db.child("Backend").child("Backend output").child(appID).child(str(sessionID)).child(sessionName).child("Race Variables").update(raceVariables)
-                    db.child("Backend").child("Backend output").child(appID).child(str(sessionID)).child(
-                        sessionName).child("Race Variables").remove()
-                    db.child("Backend").child("Backend output").child(appID).child(str(sessionID)).child(
-                        sessionName).child("Race Variables").set(raceVariables)
+                    db.child("Backend").child("Backend output").child(appID).child(str(sessionID)).child(sessionName).child("Race Variables").update(raceVariables)
+                    #try:
+                    #    db.child("Backend").child("Backend output").child(appID).child(str(sessionID)).child(
+                    #        sessionName).child("Race Variables").delete()
+                    #    time.sleep(10)
+                    #except Exception as e: print(e)
+
+                    #db.child("Backend").child("Backend output").child(appID).child(str(sessionID)).child(
+                    #    sessionName).child("Race Variables").set(raceVariables)
                         #"Current traffic value": tra,
                         #"My name is": str(state.myName)
+                    db.child("Backend").child("Backend Ingest").child(appID).child(str(sessionID)).child(session).child(item).delete()
+
             except NameError:
                 print("something wrong with data")
 
