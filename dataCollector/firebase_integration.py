@@ -1,11 +1,16 @@
-import pyrebase
+import firebase_admin
+from firebase_admin import credentials, db
 
 class FirebaseIntegration:
     def __init__(self):
-        self.config = { ... }  # Your Firebase configuration
-        self.firebase = pyrebase.initialize_app(self.config)
-        self.db = self.firebase.database()
+        # Initialize the Firebase Admin SDK
+        self.cred = credentials.Certificate('path/to/your/serviceAccountKey.json')
+        firebase_admin.initialize_app(self.cred, {
+            'databaseURL': 'https://your-database-url.firebaseio.com'
+        })
 
-    def send_data(self, data):
-        # Code to send data to Firebase
-        # Example: self.db.child('path').push(data)
+    def send_data(self, data, path='your_data_path'):
+        print("Trying to send data...")
+        ref = db.reference(path)
+        ref.push(data)
+        print("Data sent to Firebase.")
