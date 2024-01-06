@@ -1,31 +1,20 @@
-from pyirsdk_wrapper import PyirsdkWrapper
-import time
-import pyrebase
+import irsdk
 import asyncio
-import aiosched
+import time
+import firebase_admin
+from firebase_admin import credentials
+from firebase_admin import db as firebase_db
+import datetime
 
-from datetime import date
-from Classes import *
+from startup import *
+from Classes import State
+from iracingDataHandler import *
 
+cred = credentials.Certificate("../auth.json")
+firebase_admin.initialize_app(cred, {'databaseURL': 'https://iracingai-default-rtdb.europe-west1.firebasedatabase.app'})
+fb_db = firebase_db.reference()
 
-# Instantiate the PyirsdkWrapper class
-ir = PyirsdkWrapper()
-
-config = {
-    "apiKey": "AIzaSyB5-lkeChuEgkJ0UXYbf6WUP33fIBNYVdA",
-    "authDomain": "iracingai.firebaseapp.com",
-    "databaseURL": "https://iracingai-default-rtdb.europe-west1.firebasedatabase.app",
-    "projectId": "iracingai",
-    "databaseURL": "https://iracingai-default-rtdb.europe-west1.firebasedatabase.app/",
-    "storageBucket": "iracingai.appspot.com",
-    "messagingSenderId": "536602400542",
-    "appId": "1:536602400542:web:17ef9c0bedfcf074209b0f",
-    "measurementId": "G-CDHEMNLTZT"
-};
-
-firebase = pyrebase.initialize_app(config)
-db = firebase.database()
-
+state = State()
 
 def check_iracing():
     if state.ir_connected and not (ir.is_initialized and ir.is_connected):
@@ -66,16 +55,18 @@ async def monitor_lap_changes(idx):
     trackTemp = round(ir['TrackTemp'], 1)
     sessionID = ir['WeekendInfo']['SessionID']
     trackName = ir['WeekendInfo']['TrackName']
+    print(f"SessionID: {sessionID}, TrackName: {trackName}, airTemp: {airTemp}, trackTemp: {trackTemp}")
 
     local_lap_times = {}
 
     # Create a dictionary to map CarIdx to UserID
     car_idx_to_user_id = {driver['CarIdx']: driver['UserID'] for driver in ir['DriverInfo']['Drivers']}
+    print(f"car_idx_to_user_id: {car_idx_to_user_id}")
 
     # Find the active session (the one with the highest SessionNum)
     active_session = max(ir['SessionInfo']['Sessions'], key=lambda s: s['SessionNum'])
     sessionType = active_session['SessionName']
-    print(sessionType)
+    print(f"Active session: {sessionType}")
 
     driversData = ir['DriverInfo']['Drivers']
     driversNames = {}
@@ -83,18 +74,36 @@ async def monitor_lap_changes(idx):
         car_idx = driver['CarIdx']
         name = driver['UserName']
         driversNames[car_idx] = name
+    print(f"driversNames: {driversNames}")
 
     driversNumbers = {}
     for driver in driversData:
         car_idx = driver['CarIdx']
-        CarNumber = driver['CarNumber']
+        CarNumber = str(driver['CarNumber']).replace("'", '"')
         driversNumbers[car_idx] = CarNumber
+    print(f"driversNumbers: {driversNumbers}")
 
     driversCars = {}
     for driver in driversData:
         car_idx = driver['CarIdx']
         CarClass = driver['CarPath']
         driversCars[car_idx] = CarClass
+    print(f"driversCars: {driversCars}")
+
+
+    driversRatings = {}
+    for driver in driversData:
+        car_idx = driver['CarIdx']
+        CarRating = driver['IRating']
+        driversRatings[car_idx] = CarRating
+    print(f"driversRating: {driversRatings}")
+
+    teamNames = {}
+    for driver in driversData:
+        car_idx = driver['CarIdx']
+        teamName = driver['TeamName']
+        teamNames[car_idx] = teamName
+    print(f"teamName: {teamNames}")
 
     while True:
         if idx < len(ir['CarIdxLap']):
@@ -113,6 +122,10 @@ async def monitor_lap_changes(idx):
                         name = driversNames[car_idx]
                         CarNumber = driversNumbers[car_idx]
                         CarClass = driversCars[car_idx]
+                        CarRating = driversRatings[car_idx]
+                        teamName = teamNames[car_idx]
+                        airTemp = round(ir['AirTemp'], 1)
+                        trackTemp = round(ir['TrackTemp'], 1)
 
                         # ... (rest of the code)
 
@@ -126,25 +139,44 @@ async def monitor_lap_changes(idx):
                                 car = next((car for car in active_session['ResultsPositions'] if car['CarIdx'] == idx),
                                            None)
 
-                                last_time = car['LastTime']
+                                last_time = car['LastTime'] if car['LastTime'] != -1 else None
+
                                 local_lap_times.setdefault(car_idx, {})[lap] = last_time
 
+                                classPosition = car['ClassPosition']
+                                position = car['Position']
+                                time = car['Time']
+
+
+
+                                #print(CarNumber + "Last lap:" + last_time + " tracktemp: " + trackTemp + " airtemp: " + airTemp)
+
                                 # Update competitor data in Firebase Realtime Database using CarIdx
-                                races_ref = db.child(f'races/{sessionID}/{state.myName}/competitorData/{CarNumber}/')
+                                races_ref = fb_db.child(f'racesTest/{sessionID}/{state.myName}/competitorData/{CarNumber} - {teamName}/')
                                 races_ref.update({
                                     f'/Class': CarClass,
                                     f'/trackName': trackName,
                                     f'{sessionType}/lapTimes/{lap}': last_time,
                                     f'{sessionType}/trackTemp/{lap}': trackTemp,
-                                    f'{sessionType}/trackTemp/{lap}': airTemp
+                                    f'{sessionType}/airTemp/{lap}': airTemp,
+                                    f'{sessionType}/classPosition/{lap}': classPosition,
+                                    f'{sessionType}/position/{lap}': position,
+                                    f'{sessionType}/time/{lap}': time,
+                                    f'{sessionType}/name/{lap}': name,
+                                    f'{sessionType}/CarRating/{lap}': CarRating
                                 })
 
                                 # Update AI analysis data in Firebase Realtime Database using UserID
-                                AI_analysis_ref = db.child(f'AiDictionary/{user_id}/{CarClass}/{trackName}/{sessionID}/')
+                                AI_analysis_ref = fb_db.child(f'AiDictionaryTest/{user_id}/{CarClass}/{trackName}/{sessionID}/')
                                 AI_analysis_ref.update({
                                     f'{sessionType}/lapTimes/{lap}': last_time,
                                     f'{sessionType}/trackTemp/{lap}': trackTemp,
-                                    f'{sessionType}/trackTemp/{lap}': airTemp
+                                    f'{sessionType}/airTemp/{lap}': airTemp,
+                                    f'{sessionType}/classPosition/{lap}': classPosition,
+                                    f'{sessionType}/position/{lap}': position,
+                                    f'{sessionType}/time/{lap}': time,
+                                    f'{sessionType}/name/{lap}': name,
+                                    f'{sessionType}/CarRating/{lap}': CarRating
                                 })
 
                                 #print(str(name) + "#" + str(CarNumber) + " latest laptime for lap " + str(lap) + " is: " + str(last_time))

@@ -5,6 +5,7 @@ import time
 
 class State:
 
+    appID = ""
     ir_connected = False
     last_car_setup_tick = -1
     lap_counter = 0

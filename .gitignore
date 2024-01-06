@@ -1,0 +1,4 @@
+# .gitignore file
+
+config.py
+auth.json
