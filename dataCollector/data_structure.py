@@ -222,18 +222,21 @@ class TireData:
 
 class CarData:
     def __init__(self, ir, car_idx):
-        self.car_idx = car_idx
-        self.car_class_position = ir['CarClassPosition'][car_idx]
-        self.est_time = ir['EstTime'][car_idx]
-        self.f2_time = ir['F2Time'][car_idx]
-        self.gear = ir['Gear'][car_idx]
-        self.lap = ir['Lap'][car_idx]
-        self.lap_dist_pct = ir['LapDistPct'][car_idx]
-        self.on_pit_road = ir['OnPitRoad'][car_idx]
-        self.position = ir['Position'][car_idx]
-        self.rpm = ir['RPM'][car_idx]
-        self.steer = ir['Steer'][car_idx]
-        self.track_surface = ir['TrackSurface'][car_idx]
+        if 'CarClassPosition' in ir and ir['CarClassPosition'] is not None and car_idx < len(ir['CarClassPosition']):
+            self.car_idx = car_idx
+            self.car_class_position = ir['CarClassPosition'][car_idx]
+            self.est_time = ir['EstTime'][car_idx]
+            self.f2_time = ir['F2Time'][car_idx]
+            self.gear = ir['Gear'][car_idx]
+            self.lap = ir['Lap'][car_idx]
+            self.lap_dist_pct = ir['LapDistPct'][car_idx]
+            self.on_pit_road = ir['OnPitRoad'][car_idx]
+            self.position = ir['Position'][car_idx]
+            self.rpm = ir['RPM'][car_idx]
+            self.steer = ir['Steer'][car_idx]
+            self.track_surface = ir['TrackSurface'][car_idx]
+        else:
+            self.car_class_position = None
 
 class CarArrayData:
     def __init__(self):
