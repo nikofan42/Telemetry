@@ -222,77 +222,82 @@ class TireData:
 
 class CarData:
     def __init__(self, ir, car_idx):
-        if 'CarClassPosition' in ir and ir['CarClassPosition'] is not None and car_idx < len(ir['CarClassPosition']):
-            self.car_idx = car_idx
-            self.car_class_position = ir['CarClassPosition'][car_idx]
-            self.est_time = ir['EstTime'][car_idx]
-            self.f2_time = ir['F2Time'][car_idx]
-            self.gear = ir['Gear'][car_idx]
-            self.lap = ir['Lap'][car_idx]
-            self.lap_dist_pct = ir['LapDistPct'][car_idx]
-            self.on_pit_road = ir['OnPitRoad'][car_idx]
-            self.position = ir['Position'][car_idx]
-            self.rpm = ir['RPM'][car_idx]
-            self.steer = ir['Steer'][car_idx]
-            self.track_surface = ir['TrackSurface'][car_idx]
-        else:
-            self.car_class_position = None
+        #print(f"Initializing CarData for car index: {car_idx}")
+        self.car_idx = car_idx
+        # Initialize all attributes to None
+        self.car_class_position = ir['CarIdxClassPosition'][car_idx]
+        self.est_time = ir['CarIdxEstTime'][car_idx]
+        self.f2_time = ir['CarIdxF2Time'][car_idx]
+        self.gear = ir['CarIdxGear'][car_idx]
+        self.lap = ir['CarIdxLap'][car_idx]
+        self.lap_dist_pct = ir['CarIdxLapDistPct'][car_idx]
+        self.on_pit_road = ir['CarIdxOnPitRoad'][car_idx]
+        self.position = ir['CarIdxPosition'][car_idx]
+        self.rpm = ir['CarIdxRPM'][car_idx]
+        self.steer = ir['CarIdxSteer'][car_idx]
+        self.track_surface = ir['CarIdxTrackSurface'][car_idx]
+
+
+
 
 class CarArrayData:
     def __init__(self):
         self.car_data = []
 
     def add_car_data(self, car_data):
+        #print(f"Adding car data for car index: {car_data.car_idx}")
         self.car_data.append(car_data)
+        #print(f"Car data added for car index: {car_data.car_idx}")
 
 # To save the data for each car 10 times a second, you can create instances of CarData and add them to CarArrayData as needed.
 
 class WeekendInfo:
     def __init__(self, ir):
-        self.track_name = ir['TrackName']
-        self.track_id = ir['TrackID']
-        self.track_length = ir['TrackLength']
-        self.track_display_name = ir['TrackDisplayName']
-        self.track_display_short_name = ir['TrackDisplayShortName']
-        self.track_config_name = ir['TrackConfigName']
-        self.track_city = ir['TrackCity']
-        self.track_country = ir['TrackCountry']
-        self.track_altitude = ir['TrackAltitude']
-        self.track_latitude = ir['TrackLatitude']
-        self.track_longitude = ir['TrackLongitude']
-        self.track_north_offset = ir['TrackNorthOffset']
-        self.track_num_turns = ir['TrackNumTurns']
-        self.track_pit_speed_limit = ir['TrackPitSpeedLimit']
-        self.track_type = ir['TrackType']
-        self.track_weather_type = ir['TrackWeatherType']
-        self.track_skies = ir['TrackSkies']
-        self.track_surface_temp = ir['TrackSurfaceTemp']
-        self.track_air_temp = ir['TrackAirTemp']
-        self.track_air_pressure = ir['TrackAirPressure']
-        self.track_wind_vel = ir['TrackWindVel']
-        self.track_wind_dir = ir['TrackWindDir']
-        self.track_relative_humidity = ir['TrackRelativeHumidity']
-        self.track_fog_level = ir['TrackFogLevel']
-        self.track_cleanup = ir['TrackCleanup']
-        self.track_dynamic_track = ir['TrackDynamicTrack']
-        self.series_id = ir['SeriesID']
-        self.season_id = ir['SeasonID']
-        self.session_id = ir['SessionID']
-        self.sub_session_id = ir['SubSessionID']
-        self.league_id = ir['LeagueID']
-        self.official = ir['Official']
-        self.race_week = ir['RaceWeek']
-        self.event_type = ir['EventType']
-        self.category = ir['Category']
-        self.sim_mode = ir['SimMode']
-        self.team_racing = ir['TeamRacing']
-        self.min_drivers = ir['MinDrivers']
-        self.max_drivers = ir['MaxDrivers']
-        self.dc_rule_set = ir['DCRuleSet']
-        self.qualifier_must_start_race = ir['QualifierMustStartRace']
-        self.num_car_classes = ir['NumCarClasses']
-        self.num_car_types = ir['NumCarTypes']
-        self.weekend_options = ir['WeekendOptions']
+        weekend_info = ir['WeekendInfo']
+        self.track_name = weekend_info['TrackName']
+        self.track_id = weekend_info['TrackID']
+        self.track_length = weekend_info['TrackLength']
+        self.track_display_name = weekend_info['TrackDisplayName']
+        self.track_display_short_name = weekend_info['TrackDisplayShortName']
+        self.track_config_name = weekend_info['TrackConfigName']
+        self.track_city = weekend_info['TrackCity']
+        self.track_country = weekend_info['TrackCountry']
+        self.track_altitude = weekend_info['TrackAltitude']
+        self.track_latitude = weekend_info['TrackLatitude']
+        self.track_longitude = weekend_info['TrackLongitude']
+        self.track_north_offset = weekend_info['TrackNorthOffset']
+        self.track_num_turns = weekend_info['TrackNumTurns']
+        self.track_pit_speed_limit = weekend_info['TrackPitSpeedLimit']
+        self.track_type = weekend_info['TrackType']
+        self.track_weather_type = weekend_info['TrackWeatherType']
+        self.track_skies = weekend_info['TrackSkies']
+        self.track_surface_temp = weekend_info['TrackSurfaceTemp']
+        self.track_air_temp = weekend_info['TrackAirTemp']
+        self.track_air_pressure = weekend_info['TrackAirPressure']
+        self.track_wind_vel = weekend_info['TrackWindVel']
+        self.track_wind_dir = weekend_info['TrackWindDir']
+        self.track_relative_humidity = weekend_info['TrackRelativeHumidity']
+        self.track_fog_level = weekend_info['TrackFogLevel']
+        self.track_cleanup = weekend_info['TrackCleanup']
+        self.track_dynamic_track = weekend_info['TrackDynamicTrack']
+        self.series_id = weekend_info['SeriesID']
+        self.season_id = weekend_info['SeasonID']
+        self.session_id = weekend_info['SessionID']
+        self.sub_session_id = weekend_info['SubSessionID']
+        self.league_id = weekend_info['LeagueID']
+        self.official = weekend_info['Official']
+        self.race_week = weekend_info['RaceWeek']
+        self.event_type = weekend_info['EventType']
+        self.category = weekend_info['Category']
+        self.sim_mode = weekend_info['SimMode']
+        self.team_racing = weekend_info['TeamRacing']
+        self.min_drivers = weekend_info['MinDrivers']
+        self.max_drivers = weekend_info['MaxDrivers']
+        self.dc_rule_set = weekend_info['DCRuleSet']
+        self.qualifier_must_start_race = weekend_info['QualifierMustStartRace']
+        self.num_car_classes = weekend_info['NumCarClasses']
+        self.num_car_types = weekend_info['NumCarTypes']
+        self.weekend_options = weekend_info['WeekendOptions']
 
 class WeekendOptions:
     def __init__(self, ir):
