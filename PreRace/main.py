@@ -135,7 +135,7 @@ def ask():
                 raceVariables()
             case "pit":
                 pitVariables()
-            case "calc":
+            case "laps":
                 calculateRaceLaps()
 
 if __name__ == '__main__':
