@@ -1,0 +1,427 @@
+# iRacing Collision Detection and Advanced Analytics
+
+## Data Structure
+```python
+COLLISION_CONFIG = {
+    "detection": {
+        "acceleration_threshold": {
+            "longitudinal": 15.0,  # m/s² threshold for front/rear impacts
+            "lateral": 12.0,       # m/s² threshold for side impacts
+            "vertical": 20.0       # m/s² threshold for jumps/landings
+        },
+        "proximity_check": {
+            "enabled": True,       # Check for nearby cars before logging collision
+            "timeout": 0.5,        # Seconds to keep checking for contact after proximity alert
+            "warning_zones": {
+                "critical": 1.0,   # meters, immediate collision risk
+                "warning": 2.0,    # meters, high collision risk
+                "caution": 5.0     # meters, potential collision risk
+            },
+            "relative_velocity_threshold": 5.0  # m/s, relative velocity for collision warning
+        },
+        "orientation_check": {
+            "enabled": True,       # Monitor sudden changes in orientation
+            "yaw_rate_threshold": 3.0,    # rad/s
+            "roll_rate_threshold": 2.0,   # rad/s
+            "pitch_rate_threshold": 2.5   # rad/s
+        },
+        "predictive_warning": {
+            "enabled": True,
+            "lookahead_time": 1.0,        # seconds to predict ahead
+            "trajectory_points": 10,       # number of points to calculate
+            "collision_probability_threshold": 0.7  # probability threshold for warning
+        }
+    },
+    "cooldown": {
+        "same_car": 2.0,          # Seconds before new collision with same car
+        "any_car": 0.5,           # Seconds before new collision with different car
+        "warning_reset": 0.2      # Seconds before new warning for same risk
+    },
+    "classification": {
+        "speed_threshold": 10.0,   # m/s minimum speed for major collision
+        "impact_categories": {
+            "light": 5.0,         # m/s² minimum for light contact
+            "medium": 10.0,       # m/s² minimum for medium collision
+            "heavy": 15.0         # m/s² minimum for heavy collision
+        },
+        "incident_types": {
+            "racing_incident": ["side-by-side", "corner_entry", "corner_exit"],
+            "avoidable_contact": ["rear_end", "dive_bomb", "squeeze"],
+            "dangerous_driving": ["blocking", "unsafe_rejoin", "erratic_movement"]
+        }
+    },
+    "track_analysis": {
+        "sector_size": 0.1,       # 10% of track for each sector
+        "corner_detection": {
+            "min_radius": 20.0,   # meters
+            "max_radius": 100.0   # meters
+        },
+        "risk_zones": {
+            "braking": 1.5,       # risk multiplier for heavy braking zones
+            "corner_entry": 1.3,  # risk multiplier for corner entries
+            "corner_exit": 1.2    # risk multiplier for corner exits
+        }
+    }
+}
+
+collision_data = {
+    "session": {
+        "total_collisions": int,
+        "collisions_by_severity": {
+            "light": int,
+            "medium": int,
+            "heavy": int
+        },
+        "collisions_by_type": {
+            "front": int,
+            "rear": int,
+            "side": int,
+            "multiple": int
+        },
+        "incident_analysis": {
+            "racing_incidents": int,
+            "avoidable_contacts": int,
+            "dangerous_driving": int
+        },
+        "track_hotspots": {
+            "sector_id": {
+                "collisions": int,
+                "severity_sum": float,
+                "common_types": list,
+                "risk_factor": float
+            }
+        },
+        "session_stats": {
+            "cleanest_car": int,      # car_id with least incidents
+            "highest_risk_car": int,  # car_id with most incidents
+            "danger_periods": list,   # timestamps of high-incident periods
+            "safest_sectors": list,   # track sectors with least incidents
+            "riskiest_sectors": list  # track sectors with most incidents
+        }
+    },
+    "cars": {
+        "car_id": {
+            "current_status": {
+                "in_contact": bool,           # Currently in contact with another car
+                "contact_car_ids": [int],     # IDs of cars currently in contact
+                "proximity_warning": bool,     # Cars in close proximity
+                "nearby_car_ids": [int],      # IDs of cars in proximity
+                "last_collision_time": float,  # Session time of last collision
+                "collision_cooldown": bool,    # True if in cooldown period
+                "predicted_trajectory": [{     # List of predicted positions
+                    "time": float,            # Time offset from now
+                    "position": {
+                        "x": float,
+                        "y": float,
+                        "z": float
+                    },
+                    "velocity": {
+                        "x": float,
+                        "y": float,
+                        "z": float
+                    }
+                }],
+                "risk_assessment": {
+                    "collision_probability": float,  # 0-1 probability of collision
+                    "time_to_collision": float,     # seconds until predicted collision
+                    "risk_factors": {
+                        "speed_differential": float,
+                        "trajectory_convergence": float,
+                        "track_position_risk": float
+                    }
+                }
+            },
+            "collisions": {
+                "total": int,
+                "involved_cars": {
+                    "car_id": {
+                        "count": int,              # Number of collisions with this car
+                        "cumulative_severity": float,  # Sum of collision severities
+                        "incident_types": list     # List of incident classifications
+                    }
+                },
+                "details": [{
+                    "timestamp": float,        # When collision occurred
+                    "other_car_id": int,      # ID of other car involved
+                    "collision_type": str,     # "front", "rear", "side", "multiple"
+                    "severity": str,           # "light", "medium", "heavy"
+                    "incident_class": str,     # Classification of the incident
+                    "lap": int,
+                    "position": {
+                        "lat": float,
+                        "lon": float,
+                        "track_pct": float,
+                        "sector": int
+                    },
+                    "impact": {
+                        "velocity_delta": {    # Change in velocity
+                            "x": float,
+                            "y": float,
+                            "z": float
+                        },
+                        "peak_acceleration": {  # Peak acceleration during impact
+                            "long": float,
+                            "lat": float,
+                            "vert": float
+                        },
+                        "orientation_change": {
+                            "yaw_delta": float,
+                            "roll_delta": float,
+                            "pitch_delta": float
+                        }
+                    },
+                    "race_impact": {
+                        "positions_lost": int,
+                        "damage_occurred": bool,
+                        "invalidated_lap": bool,
+                        "time_lost": float,    # Seconds lost due to incident
+                        "affected_cars": [int] # Other cars affected by incident
+                    },
+                    "contributing_factors": {
+                        "track_condition": str,    # Dry, Wet, etc.
+                        "corner_phase": str,       # Entry, Apex, Exit
+                        "defensive_moves": bool,   # Was defending position
+                        "overtake_attempt": bool,  # Was attempting overtake
+                        "car_stability": float    # 0-1 stability rating pre-incident
+                    }
+                }]
+            },
+            "behavioral_analysis": {
+                "aggression_rating": float,    # 0-1 rating of driving aggression
+                "risk_taking": float,          # 0-1 rating of risk-taking behavior
+                "spatial_awareness": float,     # 0-1 rating of awareness
+                "common_patterns": {
+                    "preferred_lines": list,    # Commonly taken racing lines
+                    "overtaking_zones": list,   # Favorite overtaking spots
+                    "defensive_spots": list     # Common defensive positions
+                }
+            }
+        }
+    }
+}
+```
+
+## Enhanced Detection Algorithms
+
+1. **Predictive Collision Warning**:
+```python
+def predict_trajectory(car_data, lookahead_time, num_points):
+    """Calculate future trajectory based on current motion"""
+    trajectory = []
+    dt = lookahead_time / num_points
+    
+    pos = car_data["position"]
+    vel = car_data["velocity"]
+    accel = car_data["acceleration"]
+    
+    for i in range(num_points):
+        t = dt * (i + 1)
+        trajectory.append({
+            "time": t,
+            "position": {
+                "x": pos["x"] + vel["x"]*t + 0.5*accel["long"]*t*t,
+                "y": pos["y"] + vel["y"]*t + 0.5*accel["lat"]*t*t,
+                "z": pos["z"] + vel["z"]*t + 0.5*accel["vert"]*t*t
+            },
+            "velocity": {
+                "x": vel["x"] + accel["long"]*t,
+                "y": vel["y"] + accel["lat"]*t,
+                "z": vel["z"] + accel["vert"]*t
+            }
+        })
+    
+    return trajectory
+
+def calculate_collision_probability(car1_trajectory, car2_trajectory, distance_threshold):
+    """Calculate probability of collision between two trajectories"""
+    collision_points = 0
+    total_points = min(len(car1_trajectory), len(car2_trajectory))
+    
+    for i in range(total_points):
+        pos1 = car1_trajectory[i]["position"]
+        pos2 = car2_trajectory[i]["position"]
+        
+        distance = sqrt(
+            (pos1["x"] - pos2["x"])**2 +
+            (pos1["y"] - pos2["y"])**2 +
+            (pos1["z"] - pos2["z"])**2
+        )
+        
+        if distance < distance_threshold:
+            collision_points += 1
+    
+    return collision_points / total_points
+```
+
+2. **Enhanced Proximity Detection**:
+```python
+def analyze_proximity_risk(car_data, nearby_cars, config):
+    """Analyze risk level based on proximity and relative motion"""
+    risk_assessment = {
+        "collision_probability": 0.0,
+        "time_to_collision": float('inf'),
+        "risk_factors": {
+            "speed_differential": 0.0,
+            "trajectory_convergence": 0.0,
+            "track_position_risk": 0.0
+        }
+    }
+    
+    for nearby_car in nearby_cars:
+        # Calculate relative velocity
+        rel_velocity = calculate_relative_velocity(car_data, nearby_car)
+        
+        # Predict trajectories
+        car_trajectory = predict_trajectory(
+            car_data,
+            config["detection"]["predictive_warning"]["lookahead_time"],
+            config["detection"]["predictive_warning"]["trajectory_points"]
+        )
+        
+        other_trajectory = predict_trajectory(
+            nearby_car,
+            config["detection"]["predictive_warning"]["lookahead_time"],
+            config["detection"]["predictive_warning"]["trajectory_points"]
+        )
+        
+        # Calculate collision probability
+        prob = calculate_collision_probability(
+            car_trajectory,
+            other_trajectory,
+            config["detection"]["proximity_check"]["warning_zones"]["critical"]
+        )
+        
+        if prob > risk_assessment["collision_probability"]:
+            risk_assessment["collision_probability"] = prob
+            risk_assessment["risk_factors"]["speed_differential"] = abs(rel_velocity)
+            risk_assessment["risk_factors"]["trajectory_convergence"] = calculate_trajectory_convergence(car_trajectory, other_trajectory)
+            risk_assessment["risk_factors"]["track_position_risk"] = assess_track_position_risk(car_data["position"]["track_pct"])
+            
+            # Calculate time to collision
+            if prob > 0:
+                risk_assessment["time_to_collision"] = calculate_time_to_collision(car_data, nearby_car)
+    
+    return risk_assessment
+```
+
+3. **Incident Classification**:
+```python
+def classify_incident(collision_data, car_data, other_car_data):
+    """Determine the type and responsibility of an incident"""
+    incident_class = "racing_incident"  # default classification
+    
+    # Analyze pre-collision conditions
+    relative_position = calculate_relative_position(car_data, other_car_data)
+    relative_velocity = calculate_relative_velocity(car_data, other_car_data)
+    track_phase = determine_track_phase(car_data["position"]["track_pct"])
+    
+    # Check for common incident patterns
+    if is_rear_end_collision(relative_position, relative_velocity):
+        incident_class = "avoidable_contact"
+    elif is_unsafe_rejoin(car_data["track_surface"], relative_position):
+        incident_class = "dangerous_driving"
+    elif is_defensive_move(car_data["behavioral_analysis"], relative_position):
+        incident_class = "racing_incident"
+    
+    return incident_class
+
+def analyze_contributing_factors(car_data, other_car_data, track_data):
+    """Analyze factors that contributed to an incident"""
+    return {
+        "track_condition": track_data["surface_condition"],
+        "corner_phase": determine_corner_phase(car_data),
+        "defensive_moves": detect_defensive_moves(car_data),
+        "overtake_attempt": detect_overtake_attempt(car_data, other_car_data),
+        "car_stability": calculate_car_stability(car_data)
+    }
+```
+
+## Advanced Analytics
+
+1. **Track Risk Mapping**:
+```python
+def update_track_risk_map(collision_data, track_config):
+    """Update risk factors for track sectors based on collision history"""
+    for sector_id, sector_data in collision_data["session"]["track_hotspots"].items():
+        # Calculate risk factor based on collision history
+        risk_factor = (
+            sector_data["collisions"] * 
+            sector_data["severity_sum"] * 
+            track_config["risk_zones"].get(sector_data["corner_phase"], 1.0)
+        )
+        
+        # Update sector risk factor with exponential moving average
+        sector_data["risk_factor"] = (
+            0.9 * sector_data["risk_factor"] +
+            0.1 * risk_factor
+        )
+```
+
+2. **Behavioral Analysis**:
+```python
+def update_driver_behavior_analysis(car_data, collision_history):
+    """Analyze and update driver behavior patterns"""
+    analysis = {
+        "aggression_rating": calculate_aggression_rating(car_data, collision_history),
+        "risk_taking": assess_risk_taking_behavior(car_data, collision_history),
+        "spatial_awareness": evaluate_spatial_awareness(car_data),
+        "common_patterns": {
+            "preferred_lines": detect_preferred_lines(car_data),
+            "overtaking_zones": identify_overtaking_zones(car_data),
+            "defensive_spots": map_defensive_positions(car_data)
+        }
+    }
+    return analysis
+```
+
+## Data Collection Strategy
+
+1. **Real-Time Monitoring (60Hz)**:
+   - Car positions, velocities, and accelerations
+   - Proximity warnings and predictions
+   - Track conditions and sector analysis
+   - Behavioral patterns and risk assessment
+
+2. **Event Recording**:
+   - Detailed collision data with contributing factors
+   - Near-miss incidents and risk patterns
+   - Track sector risk updates
+   - Behavioral analysis updates
+
+3. **Analysis Triggers**:
+   - Collision detected
+   - High-risk situation identified
+   - Significant behavior pattern change
+   - Track sector risk threshold exceeded
+   - Session state changes
+
+4. **Data Export and Analysis**:
+```python
+EXPORT_CONFIG = {
+    "formats": ["csv", "json", "sqlite"],
+    "aggregation_levels": [
+        "by_lap",
+        "by_stint",
+        "by_session",
+        "by_car",
+        "by_track_section",
+        "by_incident_type"
+    ],
+    "analysis_metrics": [
+        "collision_hotspots",
+        "common_incident_types",
+        "high_risk_areas",
+        "damage_correlation",
+        "behavioral_patterns",
+        "risk_prediction_accuracy",
+        "incident_responsibility",
+        "safety_rating_impact"
+    ],
+    "visualization_options": {
+        "track_heatmap": True,
+        "incident_replay": True,
+        "risk_prediction_overlay": True,
+        "behavior_analysis_graphs": True
+    }
+}
+``` 

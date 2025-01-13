@@ -1,0 +1,565 @@
+# iRacing SDK Python Integration Guide
+
+## Connection Setup
+1. Memory-Mapped File Access:
+   - File Name: "Local\\IRSDKMemMapFileName"
+   - Event Name: "Local\\IRSDKDataValidEvent"
+   - Update Rate: 60Hz (every 16ms)
+   - Data Format: Uses triple buffering for consistency
+
+2. Data Types:
+   - Session Info: YAML format, updated on changes
+   - Variables: Binary format, updated every tick (60Hz)
+   - Variable Types:
+     ```python
+     IRSDK_CHAR = 0    # 1 byte
+     IRSDK_BOOL = 1    # 1 byte
+     IRSDK_INT = 2     # 4 bytes
+     IRSDK_BITFIELD = 3  # 4 bytes
+     IRSDK_FLOAT = 4   # 4 bytes
+     IRSDK_DOUBLE = 5  # 8 bytes
+     ```
+
+## Real-Time Data Structure
+
+### 1. Session Data (Updated on Change)
+```python
+session_data = {
+    "session": {
+        "time": float,          # Seconds since session start
+        "time_remaining": float,  # Seconds left in session
+        "time_of_day": float,   # Time of day in seconds
+        "lap_count": int,       # Total laps in session
+        "flags": int,           # Bitfield of active flags
+        "state": int,           # Session state enum
+        "unique_id": str        # Session identifier
+    }
+}
+```
+
+### 2. Weather Data (60Hz Updates)
+```python
+weather_data = {
+    "weather": {
+        "air_density": float,    # kg/m³
+        "air_pressure": float,   # Hg
+        "air_temp": float,       # °C
+        "track_temp": float,     # °C
+        "relative_humidity": float,  # %
+        "fog_level": float,      # %
+        "skies": int,           # 0=Clear, 1=P.Cloudy, 2=M.Cloudy, 3=Overcast
+        "weather_type": int,     # 0=Constant, 1=Dynamic
+        "wind": {
+            "direction": float,  # radians
+            "velocity": float    # m/s
+        },
+        "track_wetness": int    # 0=Unknown to 7=ExtremelyWet
+    }
+}
+```
+
+### 3. Car Telemetry (60Hz Updates)
+```python
+car_data = {
+    "cars": {
+        "car_id": {  # 0-63 for each car
+            "position": {
+                "overall": int,
+                "class": int,
+                "lap": int,
+                "completed_laps": int,
+                "lap_dist_pct": float,  # 0-100%
+                "lat": float,  # decimal degrees
+                "lon": float,  # decimal degrees
+                "alt": float   # meters
+            },
+            "timing": {
+                "last_lap_time": float,
+                "best_lap_time": float,
+                "best_lap_num": int,
+                "est_time": float,
+                "f2_time": float  # Time behind leader
+            },
+            "state": {
+                "gear": int,     # -1=R, 0=N, 1+=Forward
+                "rpm": float,
+                "steer_angle": float,  # radians
+                "on_pit_road": bool,
+                "surface_type": int,
+                "track_surface": int,
+                "engine_warnings": int  # Bitfield of active warnings
+            },
+            "motion": {
+                "velocity": {
+                    "x": float,  # m/s
+                    "y": float,
+                    "z": float
+                },
+                "acceleration": {
+                    "long": float,  # m/s²
+                    "lat": float,
+                    "vert": float
+                },
+                "orientation": {
+                    "pitch": float,
+                    "roll": float,
+                    "yaw": float,
+                    "yaw_rate": float,
+                    "pitch_rate": float,
+                    "roll_rate": float
+                }
+            },
+            "driver_info": {
+                "car_number": str,     # String to handle numbers like "001"
+                "car_name": str,       # Full car name/model
+                "driver_name": str,
+                "team_name": str,
+                "car_class_id": int
+            }
+        }
+    }
+}
+```
+
+### 4. Pit Service Data
+```python
+pit_data = {
+    "status": int,  # 0=None, 1=InProgress, 2=Complete, 100+=Error
+    "flags": int,   # Bitfield of requested services
+    "errors": {
+        "too_far_left": bool,
+        "too_far_right": bool,
+        "too_far_forward": bool,
+        "too_far_back": bool,
+        "bad_angle": bool,
+        "cant_fix": bool
+    }
+}
+```
+
+## Important Constants
+
+### Session States
+```python
+SESSION_STATES = {
+    "INVALID": 0,
+    "GET_IN_CAR": 1,
+    "WARMUP": 2,
+    "PARADE_LAPS": 3,
+    "RACING": 4,
+    "CHECKERED": 5,
+    "COOL_DOWN": 6
+}
+```
+
+### Flag Values (Bitfield)
+```python
+FLAGS = {
+    "CHECKERED": 0x00000001,
+    "WHITE": 0x00000002,
+    "GREEN": 0x00000004,
+    "YELLOW": 0x00000008,
+    "RED": 0x00000010,
+    "BLUE": 0x00000020,
+    "DEBRIS": 0x00000040,
+    "CROSSED": 0x00000080,
+    "YELLOW_WAVING": 0x00000100,
+    "ONE_LAP_TO_GREEN": 0x00000200,
+    "GREEN_HELD": 0x00000400,
+    "TEN_TO_GO": 0x00000800,
+    "FIVE_TO_GO": 0x00001000,
+    "RANDOM_WAVING": 0x00002000,
+    "CAUTION": 0x00004000,
+    "CAUTION_WAVING": 0x00008000
+}
+```
+
+### Track Surface Types
+```python
+TRACK_SURFACES = {
+    "NOT_IN_WORLD": -1,
+    "OFF_TRACK": 0,
+    "IN_PIT_STALL": 1,
+    "APPROACHING_PITS": 2,
+    "ON_TRACK": 3
+}
+```
+
+### Engine Warning Flags (Bitfield)
+```python
+ENGINE_WARNINGS = {
+    "WATER_TEMP": 0x0001,      # Water temperature warning
+    "FUEL_PRESSURE": 0x0002,   # Fuel pressure warning
+    "OIL_PRESSURE": 0x0004,    # Oil pressure warning
+    "ENGINE_STALLED": 0x0008,  # Engine has stalled
+    "PIT_SPEED_LIMITER": 0x0010,  # Pit speed limiter is active
+    "REV_LIMITER": 0x0020,     # Rev limiter is active
+    "OIL_TEMP": 0x0040        # Oil temperature warning
+}
+```
+
+### Track Surface Materials
+```python
+TRACK_MATERIALS = {
+    "ASPHALT1": 1,
+    "ASPHALT2": 2,
+    "ASPHALT3": 3,
+    "ASPHALT4": 4,
+    "CONCRETE1": 5,
+    "CONCRETE2": 6,
+    "RACING_DIRT1": 7,
+    "RACING_DIRT2": 8,
+    "PAINT1": 9,
+    "PAINT2": 10,
+    "RUMBLE1": 11,
+    "RUMBLE2": 12,
+    "RUMBLE3": 13,
+    "RUMBLE4": 14,
+    "GRASS1": 15,
+    "GRASS2": 16,
+    "GRASS3": 17,
+    "GRASS4": 18,
+    "DIRT1": 19,
+    "DIRT2": 20,
+    "DIRT3": 21,
+    "DIRT4": 22,
+    "SAND": 23,
+    "GRAVEL1": 24,
+    "GRAVEL2": 25,
+    "GRASSCRETE": 26,
+    "ASTROTURF": 27
+}
+```
+
+### Car Position Indicators
+```python
+CAR_POSITIONS = {
+    "NO_CARS": 0,        # No cars nearby
+    "CAR_LEFT": 1,       # Car on the left
+    "CAR_RIGHT": 2,      # Car on the right
+    "CARS_LEFT_RIGHT": 3,  # Cars on both sides
+    "TWO_CARS_LEFT": 4,  # Two cars to the left
+    "TWO_CARS_RIGHT": 5  # Two cars to the right
+}
+```
+
+## Firebase Integration Notes
+
+1. Data Structure Recommendations:
+   - Use separate collections for session, weather, and car data
+   - Use car_id as document ID for car telemetry
+   - Consider using Realtime Database for high-frequency updates
+   - Use Firestore for session and weather data
+
+2. Performance Considerations:
+   - Buffer car telemetry data and batch update
+   - Implement rate limiting for Firebase writes
+   - Consider data aggregation for historical analysis
+   - Use server timestamp for data synchronization
+
+3. Example Firebase Structure:
+```
+iracing/
+  ├── sessions/
+  │   └── {session_id}/
+  │       ├── info/
+  │       ├── weather/
+  │       └── timestamp
+  ├── telemetry/
+  │   └── {session_id}/
+  │       ├── cars/
+  │       │   └── {car_id}/
+  │       └── timestamp
+  └── pit_data/
+      └── {session_id}/
+          ├── status/
+          └── timestamp
+```
+
+## Implementation Tips
+
+1. Data Polling:
+   ```python
+   UPDATE_RATE = 1/60  # 60Hz
+   BATCH_SIZE = 10     # Number of updates to batch
+   ```
+
+2. Error Handling:
+   - Implement reconnection logic for SDK disconnects
+   - Handle Firebase quota limits
+   - Validate data before sending to Firebase
+
+3. Memory Management:
+   - Clear old data periodically
+   - Implement data retention policies
+   - Monitor memory usage for long sessions
+
+4. Required Python Packages:
+   ```
+   firebase-admin
+   pyirsdk
+   numpy  # For efficient data handling
+   ``` 
+
+## Best Practices for Data Collection
+
+1. Session Management:
+   - Start new Firebase collection for each session
+   - Use session_id as the root for all related data
+   - Implement cleanup for old sessions
+
+2. Data Sampling:
+   - High-frequency data (60Hz):
+     ```python
+     HIGH_FREQ_VARS = [
+         "car_position",
+         "velocity",
+         "acceleration",
+         "engine_warnings"
+     ]
+     ```
+   - Medium-frequency data (10Hz):
+     ```python
+     MEDIUM_FREQ_VARS = [
+         "weather",
+         "track_state",
+         "lap_times"
+     ]
+     ```
+   - Event-based data:
+     ```python
+     EVENT_VARS = [
+         "flags",
+         "pit_events",
+         "session_state"
+     ]
+     ```
+
+3. Error Recovery:
+   ```python
+   RECONNECT_TIMEOUT = 5.0  # seconds
+   MAX_RETRY_ATTEMPTS = 3
+   BATCH_TIMEOUT = 1.0      # seconds
+   ```
+
+4. Memory Management:
+   ```python
+   MAX_CACHE_SIZE = 1000    # number of data points
+   CLEANUP_INTERVAL = 3600  # seconds
+   ``` 
+
+## Pit Crew Dashboard Data Structure
+
+### 1. Critical Real-Time Data (60Hz Updates)
+```python
+dashboard_data = {
+    "car": {
+        "fuel": {
+            "level": float,          # Current fuel level (L)
+            "last_lap_usage": float, # Fuel used last lap (L)
+            "estimated_laps": float, # Estimated laps remaining with current fuel
+            "pressure": float,       # Fuel pressure
+            "pressure_warning": bool # From engine warnings
+        },
+        "tires": {
+            "temperatures": {
+                "lf": {"outer": float, "middle": float, "inner": float},  # °C
+                "rf": {"outer": float, "middle": float, "inner": float},
+                "lr": {"outer": float, "middle": float, "inner": float},
+                "rr": {"outer": float, "middle": float, "inner": float}
+            },
+            "wear": {
+                "lf": float,  # Percentage remaining
+                "rf": float,
+                "lr": float,
+                "rr": float
+            },
+            "pressures": {
+                "lf": float,  # kPa
+                "rf": float,
+                "lr": float,
+                "rr": float
+            }
+        },
+        "engine": {
+            "water_temp": float,     # °C
+            "oil_temp": float,       # °C
+            "oil_pressure": float,   # kPa
+            "rpm": float,
+            "warnings": int,         # Bitfield from ENGINE_WARNINGS
+            "boost_level": float     # If applicable
+        },
+        "performance": {
+            "speed": float,          # km/h
+            "gear": int,
+            "brake_bias": float,     # Percentage front
+            "throttle_position": float,  # 0-100%
+            "brake_position": float,     # 0-100%
+            "clutch_position": float     # 0-100%
+        },
+        "race_position": {
+            "overall": int,
+            "in_class": int,
+            "gap_ahead": float,      # Seconds
+            "gap_behind": float,     # Seconds
+            "last_lap": float,       # Seconds
+            "best_lap": float,       # Seconds
+            "predicted_lap": float,  # Based on current sectors
+            "lap_number": int,
+            "pit_window_open": bool  # Based on fuel/tire wear calculations
+        }
+    }
+}
+```
+
+### 2. Lap Analysis Data Structure
+```python
+lap_data = {
+    "session_id": str,
+    "laps": {
+        "lap_number": {
+            "metadata": {
+                "timestamp": int,        # Unix timestamp
+                "track_temp": float,     # °C
+                "air_temp": float,       # °C
+                "wind_speed": float,     # m/s
+                "wind_direction": float,  # radians
+                "track_state": str       # "Green", "Rubber", etc.
+            },
+            "cars": {
+                "car_id": {
+                    "lap_time": float,       # Total lap time
+                    "sectors": [float],      # List of sector times
+                    "position": int,         # Position at lap end
+                    "fuel_used": float,      # Liters used this lap
+                    "tire_wear": {
+                        "lf": float,         # Percentage worn this lap
+                        "rf": float,
+                        "lr": float,
+                        "rr": float
+                    },
+                    "max_speeds": [float],   # List of max speeds per sector
+                    "min_speeds": [float],   # List of min speeds per sector
+                    "avg_speed": float,      # Average lap speed
+                    "valid_lap": bool,       # False if off-track/incident
+                    "pit_stop": {
+                        "occurred": bool,
+                        "duration": float,    # If pit stop occurred
+                        "fuel_added": float,
+                        "tires_changed": list # Which tires were changed
+                    },
+                    "telemetry_samples": {    # Key points for analysis
+                        "corner_entry": [{
+                            "speed": float,
+                            "brake_point": float,
+                            "turn_in_point": float
+                        }],
+                        "corner_apex": [{
+                            "speed": float,
+                            "throttle_position": float
+                        }],
+                        "corner_exit": [{
+                            "speed": float,
+                            "throttle_application": float
+                        }]
+                    }
+                }
+            }
+        }
+    }
+}
+```
+
+### 3. Firebase Real-Time Updates Configuration
+```python
+DASHBOARD_UPDATE_CONFIG = {
+    "critical_vars": {
+        "update_rate": 60,  # Hz
+        "paths": [
+            "fuel/level",
+            "engine/warnings",
+            "performance/speed",
+            "race_position/*"
+        ]
+    },
+    "standard_vars": {
+        "update_rate": 10,  # Hz
+        "paths": [
+            "tires/temperatures/*",
+            "engine/temps/*",
+            "performance/positions/*"
+        ]
+    },
+    "analysis_vars": {
+        "update_rate": 1,  # Hz
+        "paths": [
+            "tires/wear/*",
+            "fuel/estimates/*"
+        ]
+    }
+}
+```
+
+### 4. Analysis Data Storage
+```python
+ANALYSIS_CONFIG = {
+    "storage_paths": {
+        "raw_telemetry": "telemetry/{session_id}/raw",
+        "processed_laps": "analysis/{session_id}/laps",
+        "aggregated_stats": "analysis/{session_id}/stats"
+    },
+    "aggregation_intervals": {
+        "lap_summary": "realtime",
+        "stint_summary": "end_of_stint",
+        "session_summary": "end_of_session"
+    },
+    "export_formats": {
+        "telemetry": ["csv", "json"],
+        "lap_data": ["csv", "json"],
+        "analysis": ["csv", "json", "xlsx"]
+    }
+}
+```
+
+## Implementation Guidelines
+
+### 1. Dashboard Updates Priority
+```python
+PRIORITY_LEVELS = {
+    "CRITICAL": {
+        "vars": ["fuel/level", "engine/warnings", "race_position/*"],
+        "max_latency": 0.016  # seconds
+    },
+    "HIGH": {
+        "vars": ["tires/temperatures", "engine/temps"],
+        "max_latency": 0.1    # seconds
+    },
+    "MEDIUM": {
+        "vars": ["performance/*", "gap_times"],
+        "max_latency": 0.5    # seconds
+    },
+    "LOW": {
+        "vars": ["wear_rates", "averages"],
+        "max_latency": 1.0    # seconds
+    }
+}
+```
+
+### 2. Lap Data Collection Strategy
+```python
+LAP_DATA_CONFIG = {
+    "collection_points": {
+        "start_finish": {"type": "trigger", "action": "new_lap"},
+        "sectors": {"type": "trigger", "action": "sector_time"},
+        "corners": {
+            "entry": {"type": "continuous", "sample_rate": 60},
+            "apex": {"type": "continuous", "sample_rate": 60},
+            "exit": {"type": "continuous", "sample_rate": 60}
+        }
+    },
+    "analysis_triggers": {
+        "lap_completed": ["update_dashboard", "store_lap_data"],
+        "stint_completed": ["analyze_stint", "update_trends"],
+        "session_completed": ["generate_report", "export_data"]
+    }
+} 
